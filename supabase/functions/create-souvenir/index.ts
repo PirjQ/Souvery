@@ -18,25 +18,12 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
       throw new Error('Algorand configuration missing');
     }
 
-    // Create Algorand client with Nodely headers
+    // Create Algorand client with Nodely token
     const algodClient = new algosdk.Algodv2(
-      '',
+      { 'X-Algo-API-Token': nodelyToken },
       algorandNodeUrl,
       ''
     );
-
-    // Set up Nodely authentication headers
-    if (algodClient.execute) {
-      const originalExecute = algodClient.execute.bind(algodClient);
-      algodClient.execute = function(request: any) {
-        request.headers = {
-          ...request.headers,
-          'X-Algo-api-token': nodelyToken,
-          'x-and-tk': 'bolt'
-        };
-        return originalExecute(request);
-      };
-    }
 
     // Recover account from mnemonic
     const account = algosdk.mnemonicToSecretKey(algorandMnemonic);
@@ -84,18 +71,18 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
 
     // Wait for confirmation
     const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
-    
+
     console.log(`Algorand NFT created successfully: ${txId}`);
     console.log(`Asset ID: ${confirmedTxn['asset-index']}`);
 
     return txId;
   } catch (error) {
     console.error('Algorand NFT minting error:', error);
-    
+
     // Return a mock transaction ID if minting fails
     const mockTxId = `ALGO_MOCK_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`Fallback to mock Algorand NFT: ${mockTxId}`);
-    
+
     return mockTxId;
   }
 }
@@ -129,7 +116,7 @@ Deno.serve(async (req: Request) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await anonSupabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid authorization token' }),
@@ -139,7 +126,7 @@ Deno.serve(async (req: Request) => {
 
     // Parse request body
     const { title, audioUrl, imageUrl, transcript, latitude, longitude } = await req.json();
-    
+
     // Validate required fields
     if (!title || !audioUrl || !imageUrl || !transcript || latitude === undefined || longitude === undefined) {
       return new Response(
