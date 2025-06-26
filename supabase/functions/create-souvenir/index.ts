@@ -17,15 +17,15 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
     if (!nodelyToken || !algorandMnemonic) {
       throw new Error('Algorand configuration missing');
     }
-    
-    // 1. Define the metadata content for your NFT
+
+    // 1. Define the metadata content for your NFT (ARC3 Standard)
     const metadata = {
       "name": souvenir.title,
       "description": souvenir.transcript,
       "image": souvenir.imageUrl,
-      "image_mimetype": "image/png", // Or appropriate mimetype
+      "image_mimetype": "image/png", // You can make this dynamic if you support other types
       "properties": {
-        "audio": souvenir.audioUrl,
+        "audio_url": souvenir.audioUrl,
         "latitude": souvenir.latitude,
         "longitude": souvenir.longitude,
         "created_at": new Date().toISOString(),
@@ -33,19 +33,20 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
       }
     };
 
-    // 2. Upload the metadata as a new JSON file to Supabase Storage
-    const metadataFileName = `metadata/${Date.now()}_${souvenir.title.replace(/\s/g, '_')}.json`;
+    // 2. Create a short, unique filename for the metadata to keep the URL length down
+    const shortId = Math.random().toString(36).substring(2, 10);
+    const metadataFileName = `metadata/${shortId}.json`;
     const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
 
     const { error: uploadError } = await supabase.storage
-      .from('souvenir_images') // We can store metadata in the same bucket
+      .from('souvenir_images') // Storing metadata in the same bucket is fine
       .upload(metadataFileName, metadataBlob);
 
     if (uploadError) {
       throw new Error(`Failed to upload metadata JSON: ${uploadError.message}`);
     }
 
-    // 3. Get the public URL for the newly uploaded metadata file
+    // 3. Get the public URL for the new metadata file
     const { data: urlData } = supabase.storage
       .from('souvenir_images')
       .getPublicUrl(metadataFileName);
@@ -68,13 +69,12 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
       reserve: account.addr,
       freeze: account.addr,
       clawback: account.addr,
-      unitName: 'STORY',
+      // FIX: Use a shorter, more unique unit name (max 8 chars)
+      unitName: `SVR${shortId.substring(0,5)}`,
       assetName: souvenir.title.substring(0, 32),
-      // THIS IS THE CRITICAL CHANGE: Use the URL of the JSON file
+      // CRITICAL FIX: Use the URL of the JSON file, which is now guaranteed to be short
       assetURL: `${metadataUrl}#arc3`,
-      // The note field is now redundant for ARC3 but good for compatibility (ARC69)
-      note: new TextEncoder().encode(JSON.stringify(metadata)),
-      assetMetadataHash: undefined, // Not needed when using assetURL
+      assetMetadataHash: undefined,
     });
 
     const signedTxn = assetCreateTxn.signTxn(account.sk);
@@ -93,6 +93,7 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
   }
 }
 
+// Main Deno serve function (no changes needed below this line)
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
