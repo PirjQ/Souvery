@@ -17,17 +17,15 @@ async function transcribeAudio(audioUrl: string): Promise<string> {
     // Fetch the audio file
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
-      throw new Error('Failed to fetch audio file');
+      throw new Error(`Failed to fetch audio file: ${audioResponse.statusText}`);
     }
 
     const audioBuffer = await audioResponse.arrayBuffer();
-    
-    // Create a proper File object for the API
-    const audioFile = new File([audioBuffer], 'audio.wav', { type: 'audio/wav' });
-    
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
+
     // Use ElevenLabs Speech-to-Text API directly with proper FormData
     const formData = new FormData();
-    formData.append('audio', audioFile);
+    formData.append('file', audioBlob, 'audio.wav'); // Corrected field name and using Blob
     formData.append('model_id', 'eleven_multilingual_v2');
 
     const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
@@ -48,7 +46,7 @@ async function transcribeAudio(audioUrl: string): Promise<string> {
     return result.text || 'Unable to transcribe audio';
   } catch (error) {
     console.error('ElevenLabs transcription error:', error);
-    
+
     // Fallback to mock transcript if API fails
     const fallbackTranscripts = [
       "I remember the summer I turned eight, when my grandmother taught me how to bake her famous chocolate chip cookies. The kitchen smelled like vanilla and warmth, and I felt so grown up standing on that little wooden stool, carefully measuring ingredients.",
