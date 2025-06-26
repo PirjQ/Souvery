@@ -4,7 +4,7 @@ import algosdk from 'npm:algosdk@2.7.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
 // Function to mint Algorand NFT
@@ -20,9 +20,9 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
 
     // Create Algorand client with Nodely token
     const algodClient = new algosdk.Algodv2(
-      { 'X-Algo-API-Token': nodelyToken },
-      algorandNodeUrl,
-      ''
+        { 'X-Algo-API-Token': nodelyToken },
+        algorandNodeUrl,
+        ''
     );
 
     // Recover account from mnemonic
@@ -49,18 +49,18 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
     const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
       from: account.addr,
       suggestedParams,
-      total: 1, // NFT has total supply of 1
-      decimals: 0, // NFTs have 0 decimals
+      total: 1,
+      decimals: 0,
       defaultFrozen: false,
       manager: account.addr,
       reserve: account.addr,
       freeze: account.addr,
       clawback: account.addr,
       unitName: 'STORY',
-      assetName: souvenir.title.substring(0, 32), // Algorand asset name limit
-      assetURL: souvenir.imageUrl.substring(0, 96), // Algorand URL limit
-      assetMetadataHash: undefined, // Could add IPFS hash here
-      note: new TextEncoder().encode(JSON.stringify(metadata)), // Use TextEncoder instead of Buffer
+      assetName: souvenir.title.substring(0, 32),
+      assetURL: `${souvenir.imageUrl.substring(0, 92)}#arc3`, // Correctly formatted assetURL for ARC3
+      assetMetadataHash: undefined,
+      note: new TextEncoder().encode(JSON.stringify(metadata))
     });
 
     // Sign the transaction
@@ -82,12 +82,11 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
     // Return a mock transaction ID if minting fails
     const mockTxId = `ALGO_MOCK_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`Fallback to mock Algorand NFT: ${mockTxId}`);
-
     return mockTxId;
   }
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -96,10 +95,10 @@ Deno.serve(async (req: Request) => {
     // Get authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Initialize Supabase client with service role for database operations
@@ -118,10 +117,10 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: authError } = await anonSupabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid authorization token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Parse request body
@@ -129,10 +128,10 @@ Deno.serve(async (req: Request) => {
 
     // Validate required fields
     if (!title || !audioUrl || !imageUrl || !transcript || latitude === undefined || longitude === undefined) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Mint Algorand NFT
@@ -163,22 +162,21 @@ Deno.serve(async (req: Request) => {
 
     if (dbError) {
       console.error('Database error:', dbError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create souvenir' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Failed to create souvenir' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(
-      JSON.stringify(souvenir),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(souvenir), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
     console.error('Error in create-souvenir function:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });
