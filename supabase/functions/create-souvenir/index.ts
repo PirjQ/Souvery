@@ -60,7 +60,7 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
       assetName: souvenir.title.substring(0, 32), // Algorand asset name limit
       assetURL: souvenir.imageUrl.substring(0, 96), // Algorand URL limit
       assetMetadataHash: undefined, // Could add IPFS hash here
-      note: new Uint8Array(Buffer.from(JSON.stringify(metadata))),
+      note: new TextEncoder().encode(JSON.stringify(metadata)), // Use TextEncoder instead of Buffer
     });
 
     // Sign the transaction
