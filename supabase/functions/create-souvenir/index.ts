@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Function to mint Algorand NFT
-async function mintAlgorandNFT(souvenir: any): Promise<string> {
+async function mintAlgorandNFT(souvenir: any, supabase: any): Promise<string> {
   try {
     const nodelyToken = Deno.env.get('NODELY_API_TOKEN');
     const algorandNodeUrl = Deno.env.get('ALGORAND_NODE_URL') || 'https://testnet-api.4160.nodely.io';
@@ -18,20 +18,9 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
       throw new Error('Algorand configuration missing');
     }
 
-    // Create Algorand client with Nodely token
-    const algodClient = new algosdk.Algodv2(
-        { 'X-Algo-API-Token': nodelyToken },
-        algorandNodeUrl,
-        ''
-    );
-
-    // Recover account from mnemonic
-    const account = algosdk.mnemonicToSecretKey(algorandMnemonic);
-
-    // Get suggested transaction parameters
-    const suggestedParams = await algodClient.getTransactionParams().do();
-
-    // Create NFT metadata following ARC69 standard
+    // --- NEW LOGIC: Create and Upload Metadata JSON ---
+    
+    // 1. Define the metadata content
     const metadata = {
       name: souvenir.title,
       description: souvenir.transcript,
@@ -45,7 +34,36 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
       }
     };
 
-    // Create asset creation transaction
+    // 2. Upload the metadata JSON to Supabase Storage
+    const metadataFileName = `metadata_${Date.now()}.json`;
+    const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('souvenir_images') // Using the same bucket as images for simplicity
+      .upload(metadataFileName, metadataBlob);
+
+    if (uploadError) {
+      throw new Error(`Failed to upload metadata JSON: ${uploadError.message}`);
+    }
+
+    // 3. Get the public URL for the new metadata file
+    const { data: urlData } = supabase.storage
+      .from('souvenir_images')
+      .getPublicUrl(metadataFileName);
+
+    const metadataUrl = urlData.publicUrl;
+
+    // --- END OF NEW LOGIC ---
+
+    const algodClient = new algosdk.Algodv2(
+        { 'X-Algo-API-Token': nodelyToken },
+        algorandNodeUrl,
+        ''
+    );
+
+    const account = algosdk.mnemonicToSecretKey(algorandMnemonic);
+    const suggestedParams = await algodClient.getTransactionParams().do();
+
     const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
       from: account.addr,
       suggestedParams,
@@ -58,18 +76,14 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
       clawback: account.addr,
       unitName: 'STORY',
       assetName: souvenir.title.substring(0, 32),
-      assetURL: `${souvenir.imageUrl.substring(0, 91)}#arc3`, // Corrected substring length
+      // Use the URL of the metadata JSON file here
+      assetURL: `${metadataUrl}#arc3`,
       assetMetadataHash: undefined,
-      note: new TextEncoder().encode(JSON.stringify(metadata))
+      note: new TextEncoder().encode(JSON.stringify(metadata)) // ARC69 compatibility
     });
 
-    // Sign the transaction
     const signedTxn = assetCreateTxn.signTxn(account.sk);
-
-    // Submit the transaction
     const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
-
-    // Wait for confirmation
     const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
 
     console.log(`Algorand NFT created successfully: ${txId}`);
@@ -78,8 +92,6 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
     return txId;
   } catch (error) {
     console.error('Algorand NFT minting error:', error);
-
-    // Return a mock transaction ID if minting fails
     const mockTxId = `ALGO_MOCK_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`Fallback to mock Algorand NFT: ${mockTxId}`);
     return mockTxId;
@@ -92,7 +104,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
@@ -101,13 +112,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Initialize Supabase client with service role for database operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verify user authentication using anon key client
     const anonSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -123,10 +132,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Parse request body
     const { title, audioUrl, imageUrl, transcript, latitude, longitude } = await req.json();
 
-    // Validate required fields
     if (!title || !audioUrl || !imageUrl || !transcript || latitude === undefined || longitude === undefined) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
@@ -134,7 +141,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Mint Algorand NFT
+    // Pass the supabase client to the minting function for the upload
     const algorandTxId = await mintAlgorandNFT({
       title,
       audioUrl,
@@ -142,9 +149,8 @@ Deno.serve(async (req) => {
       transcript,
       latitude,
       longitude
-    });
+    }, supabase);
 
-    // Insert souvenir into database
     const { data: souvenir, error: dbError } = await supabase
       .from('souvenirs')
       .insert({
