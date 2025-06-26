@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
+import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2.39.3';
 import algosdk from 'npm:algosdk@2.7.0';
 
 const corsHeaders = {
@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Function to mint Algorand NFT
-async function mintAlgorandNFT(souvenir: any, supabase: any): Promise<string> {
+async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise<string> {
   try {
     const nodelyToken = Deno.env.get('NODELY_API_TOKEN');
     const algorandNodeUrl = Deno.env.get('ALGORAND_NODE_URL') || 'https://testnet-api.4160.nodely.io';
@@ -17,53 +17,47 @@ async function mintAlgorandNFT(souvenir: any, supabase: any): Promise<string> {
     if (!nodelyToken || !algorandMnemonic) {
       throw new Error('Algorand configuration missing');
     }
-
-    // --- NEW LOGIC: Create and Upload Metadata JSON ---
     
-    // 1. Define the metadata content
+    // 1. Define the metadata content for your NFT
     const metadata = {
-      name: souvenir.title,
-      description: souvenir.transcript,
-      image: souvenir.imageUrl,
-      audio: souvenir.audioUrl,
-      properties: {
-        latitude: souvenir.latitude,
-        longitude: souvenir.longitude,
-        created_at: new Date().toISOString(),
-        story_type: 'audio_visual_memory'
+      "name": souvenir.title,
+      "description": souvenir.transcript,
+      "image": souvenir.imageUrl,
+      "image_mimetype": "image/png", // Or appropriate mimetype
+      "properties": {
+        "audio": souvenir.audioUrl,
+        "latitude": souvenir.latitude,
+        "longitude": souvenir.longitude,
+        "created_at": new Date().toISOString(),
+        "story_type": "audio_visual_memory"
       }
     };
 
-    // 2. Upload the metadata JSON to Supabase Storage
-    const metadataFileName = `metadata_${Date.now()}.json`;
-    const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
+    // 2. Upload the metadata as a new JSON file to Supabase Storage
+    const metadataFileName = `metadata/${Date.now()}_${souvenir.title.replace(/\s/g, '_')}.json`;
+    const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('souvenir_images') // Using the same bucket as images for simplicity
+    const { error: uploadError } = await supabase.storage
+      .from('souvenir_images') // We can store metadata in the same bucket
       .upload(metadataFileName, metadataBlob);
 
     if (uploadError) {
       throw new Error(`Failed to upload metadata JSON: ${uploadError.message}`);
     }
 
-    // 3. Get the public URL for the new metadata file
+    // 3. Get the public URL for the newly uploaded metadata file
     const { data: urlData } = supabase.storage
       .from('souvenir_images')
       .getPublicUrl(metadataFileName);
-
+      
     const metadataUrl = urlData.publicUrl;
-
-    // --- END OF NEW LOGIC ---
-
-    const algodClient = new algosdk.Algodv2(
-        { 'X-Algo-API-Token': nodelyToken },
-        algorandNodeUrl,
-        ''
-    );
-
+    
+    // Create Algorand client
+    const algodClient = new algosdk.Algodv2({ 'X-Algo-API-Token': nodelyToken }, algorandNodeUrl, '');
     const account = algosdk.mnemonicToSecretKey(algorandMnemonic);
     const suggestedParams = await algodClient.getTransactionParams().do();
 
+    // Create the asset transaction using the METADATA URL
     const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
       from: account.addr,
       suggestedParams,
@@ -76,10 +70,11 @@ async function mintAlgorandNFT(souvenir: any, supabase: any): Promise<string> {
       clawback: account.addr,
       unitName: 'STORY',
       assetName: souvenir.title.substring(0, 32),
-      // Use the URL of the metadata JSON file here
+      // THIS IS THE CRITICAL CHANGE: Use the URL of the JSON file
       assetURL: `${metadataUrl}#arc3`,
-      assetMetadataHash: undefined,
-      note: new TextEncoder().encode(JSON.stringify(metadata)) // ARC69 compatibility
+      // The note field is now redundant for ARC3 but good for compatibility (ARC69)
+      note: new TextEncoder().encode(JSON.stringify(metadata)),
+      assetMetadataHash: undefined, // Not needed when using assetURL
     });
 
     const signedTxn = assetCreateTxn.signTxn(account.sk);
@@ -106,83 +101,46 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const anonSupabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
-
+    const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const anonSupabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '');
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await anonSupabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid authorization token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return new Response(JSON.stringify({ error: 'Invalid authorization token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { title, audioUrl, imageUrl, transcript, latitude, longitude } = await req.json();
 
     if (!title || !audioUrl || !imageUrl || !transcript || latitude === undefined || longitude === undefined) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Pass the supabase client to the minting function for the upload
-    const algorandTxId = await mintAlgorandNFT({
+    const algorandTxId = await mintAlgorandNFT({ title, audioUrl, imageUrl, transcript, latitude, longitude }, supabase);
+
+    const { data: souvenir, error: dbError } = await supabase.from('souvenirs').insert({
+      user_id: user.id,
       title,
-      audioUrl,
-      imageUrl,
-      transcript,
+      audio_url: audioUrl,
+      image_url: imageUrl,
+      transcript_text: transcript,
+      algorand_tx_id: algorandTxId,
       latitude,
       longitude
-    }, supabase);
-
-    const { data: souvenir, error: dbError } = await supabase
-      .from('souvenirs')
-      .insert({
-        user_id: user.id,
-        title,
-        audio_url: audioUrl,
-        image_url: imageUrl,
-        transcript_text: transcript,
-        algorand_tx_id: algorandTxId,
-        latitude,
-        longitude
-      })
-      .select()
-      .single();
+    }).select().single();
 
     if (dbError) {
       console.error('Database error:', dbError);
-      return new Response(JSON.stringify({ error: 'Failed to create souvenir' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return new Response(JSON.stringify({ error: 'Failed to create souvenir' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify(souvenir), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify(souvenir), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error('Error in create-souvenir function:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
