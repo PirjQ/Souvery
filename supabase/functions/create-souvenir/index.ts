@@ -58,7 +58,7 @@ async function mintAlgorandNFT(souvenir: any): Promise<string> {
       clawback: account.addr,
       unitName: 'STORY',
       assetName: souvenir.title.substring(0, 32),
-      assetURL: `${souvenir.imageUrl.substring(0, 92)}#arc3`, // Correctly formatted assetURL for ARC3
+      assetURL: `${souvenir.imageUrl.substring(0, 91)}#arc3`, // Corrected substring length
       assetMetadataHash: undefined,
       note: new TextEncoder().encode(JSON.stringify(metadata))
     });
