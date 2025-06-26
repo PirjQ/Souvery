@@ -25,8 +25,8 @@ async function transcribeAudio(audioUrl: string): Promise<string> {
 
     // Use ElevenLabs Speech-to-Text API directly with proper FormData
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.wav'); // Corrected field name and using Blob
-    formData.append('model_id', 'eleven_multilingual_v2');
+    formData.append('file', audioBlob, 'audio.wav');
+    formData.append('model_id', 'scribe_v1'); // Corrected model_id
 
     const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
