@@ -17,13 +17,13 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
     if (!nodelyToken || !algorandMnemonic) {
       throw new Error('Algorand configuration missing');
     }
-
+    
     // 1. Define the metadata content for your NFT (ARC3 Standard)
     const metadata = {
       "name": souvenir.title,
       "description": souvenir.transcript,
       "image": souvenir.imageUrl,
-      "image_mimetype": "image/png", // You can make this dynamic if you support other types
+      "image_mimetype": "image/png",
       "properties": {
         "audio_url": souvenir.audioUrl,
         "latitude": souvenir.latitude,
@@ -33,13 +33,13 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
       }
     };
 
-    // 2. Create a short, unique filename for the metadata to keep the URL length down
+    // 2. Create a very short, unique filename for the metadata to keep the URL length down
     const shortId = Math.random().toString(36).substring(2, 10);
     const metadataFileName = `metadata/${shortId}.json`;
     const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
 
     const { error: uploadError } = await supabase.storage
-      .from('souvenir_images') // Storing metadata in the same bucket is fine
+      .from('souvenir_images')
       .upload(metadataFileName, metadataBlob);
 
     if (uploadError) {
@@ -69,10 +69,8 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
       reserve: account.addr,
       freeze: account.addr,
       clawback: account.addr,
-      // FIX: Use a shorter, more unique unit name (max 8 chars)
-      unitName: `SVR${shortId.substring(0,5)}`,
+      unitName: `SVR-${shortId.substring(0,4)}`,
       assetName: souvenir.title.substring(0, 32),
-      // CRITICAL FIX: Use the URL of the JSON file, which is now guaranteed to be short
       assetURL: `${metadataUrl}#arc3`,
       assetMetadataHash: undefined,
     });
@@ -93,7 +91,7 @@ async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise
   }
 }
 
-// Main Deno serve function (no changes needed below this line)
+// Main Deno serve function
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
