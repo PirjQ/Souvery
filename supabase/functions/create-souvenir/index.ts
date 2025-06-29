@@ -33,7 +33,6 @@ async function mintAlgorandNFT(souvenir, supabase) {
       }
     };
 
-    // 2. Create a very short, unique filename for the metadata to keep the URL length down
     const shortId = Math.random().toString(36).substring(2, 5); // Only 3 characters
     const metadataFileName = `${shortId}.json`;
     const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
@@ -58,7 +57,7 @@ async function mintAlgorandNFT(souvenir, supabase) {
     const account = algosdk.mnemonicToSecretKey(algorandMnemonic);
     const suggestedParams = await algodClient.getTransactionParams().do();
 
-    // Create the asset transaction using the METADATA URL (without #arc3 to save 5 bytes)
+    // Create the asset transaction using the METADATA URL
     const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
       from: account.addr,
       suggestedParams,
@@ -72,7 +71,6 @@ async function mintAlgorandNFT(souvenir, supabase) {
       unitName: `SVR-${shortId}`,
       assetName: souvenir.title.substring(0, 32),
       assetURL: metadataUrl, // Removed #arc3 to save bytes
-      assetMetadataHash: undefined,
     });
 
     const signedTxn = assetCreateTxn.signTxn(account.sk);
