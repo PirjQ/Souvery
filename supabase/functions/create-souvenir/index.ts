@@ -35,7 +35,7 @@ async function mintAlgorandNFT(souvenir, supabase) {
 
     // 2. Create a very short, unique filename for the metadata to keep the URL length down
     const shortId = Math.random().toString(36).substring(2, 10);
-    const metadataFileName = `metadata/${shortId}.json`;
+    const metadataFileName = `${shortId}.json`;
     const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
 
     const { error: uploadError } = await supabase.storage
