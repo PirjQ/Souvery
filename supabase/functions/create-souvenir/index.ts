@@ -69,6 +69,7 @@ async function mintAlgorandNFT(souvenir, supabase) {
       reserve: account.addr,
       freeze: account.addr,
       clawback: account.addr,
+      unitName: `SVR-${shortId}`,
       assetName: souvenir.title.substring(0, 32),
       assetMetadataHash: undefined,
     });
