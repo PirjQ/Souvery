@@ -95,17 +95,34 @@ function normalizeSupabaseUrl(url: string): string {
     // Parse the URL to work with its components
     const urlObj = new URL(url);
     
-    // Convert the entire URL to lowercase
-    const normalizedUrl = url.toLowerCase();
+    // Normalize the protocol and hostname to lowercase
+    const protocol = urlObj.protocol.toLowerCase();
+    const hostname = urlObj.hostname.toLowerCase();
     
-    // Fix common issues in Supabase storage URLs
-    return normalizedUrl
+    // Normalize the pathname
+    let pathname = urlObj.pathname;
+    
+    // Fix multiple consecutive slashes (but preserve the initial slash)
+    pathname = pathname.replace(/\/+/g, '/');
+    
+    // Convert to lowercase for consistent casing
+    pathname = pathname.toLowerCase();
+    
+    // Replace spaces and URL-encoded spaces with underscores in the entire path
+    pathname = pathname.replace(/\s+/g, '_').replace(/%20/g, '_');
+    
+    // Fix specific bucket name issues
+    pathname = pathname
       .replace(/\/storage\/v1\/object\/public\/audio%20stories\//gi, '/storage/v1/object/public/audio_stories/')
-      .replace(/\/storage\/v1\/object\/public\/audio stories\//gi, '/storage/v1/object/public/audio_stories/')
+      .replace(/\/storage\/v1\/object\/public\/audio\s+stories\//gi, '/storage/v1/object/public/audio_stories/')
       .replace(/\/storage\/v1\/object\/public\/souvenir%20images\//gi, '/storage/v1/object/public/souvenir_images/')
-      .replace(/\/storage\/v1\/object\/public\/souvenir images\//gi, '/storage/v1/object/public/souvenir_images/')
-      .replace(/\s+/g, '_') // Replace any remaining spaces with underscores
-      .replace(/%20/g, '_'); // Replace URL-encoded spaces with underscores
+      .replace(/\/storage\/v1\/object\/public\/souvenir\s+images\//gi, '/storage/v1/object/public/souvenir_images/');
+    
+    // Reconstruct the URL
+    const normalizedUrl = `${protocol}//${hostname}${pathname}${urlObj.search}${urlObj.hash}`;
+    
+    console.log(`URL normalization: ${url} -> ${normalizedUrl}`);
+    return normalizedUrl;
   } catch (error) {
     console.error('Error normalizing URL:', error);
     return url; // Return original URL if normalization fails
