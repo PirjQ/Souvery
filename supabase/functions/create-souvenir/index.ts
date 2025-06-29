@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2.39.3';
+import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
 import algosdk from 'npm:algosdk@2.7.0';
 
 const corsHeaders = {
@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Function to mint Algorand NFT
-async function mintAlgorandNFT(souvenir: any, supabase: SupabaseClient): Promise<string> {
+async function mintAlgorandNFT(souvenir, supabase) {
   try {
     const nodelyToken = Deno.env.get('NODELY_API_TOKEN');
     const algorandNodeUrl = Deno.env.get('ALGORAND_NODE_URL') || 'https://testnet-api.4160.nodely.io';
