@@ -25,15 +25,15 @@ async function mintAlgorandNFT(souvenir, supabase) {
       "image": souvenir.imageUrl,
       "image_mimetype": "image/png",
       "properties": {
-        "audio_url": souvenir.audioUrl,
         "latitude": souvenir.latitude,
         "longitude": souvenir.longitude,
+        "audio_url": souvenir.audioUrl,
         "created_at": new Date().toISOString(),
         "story_type": "audio_visual_memory"
       }
     };
 
-    const shortId = Math.random().toString(36).substring(2, 5); // Only 3 characters
+    const shortId = Math.random().toString(36).substring(2, 5);
     const metadataFileName = `${shortId}.json`;
     const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
 
@@ -89,6 +89,29 @@ async function mintAlgorandNFT(souvenir, supabase) {
   }
 }
 
+// Function to normalize Supabase storage URLs
+function normalizeSupabaseUrl(url: string): string {
+  try {
+    // Parse the URL to work with its components
+    const urlObj = new URL(url);
+    
+    // Convert the entire URL to lowercase
+    const normalizedUrl = url.toLowerCase();
+    
+    // Fix common issues in Supabase storage URLs
+    return normalizedUrl
+      .replace(/\/storage\/v1\/object\/public\/audio%20stories\//gi, '/storage/v1/object/public/audio_stories/')
+      .replace(/\/storage\/v1\/object\/public\/audio stories\//gi, '/storage/v1/object/public/audio_stories/')
+      .replace(/\/storage\/v1\/object\/public\/souvenir%20images\//gi, '/storage/v1/object/public/souvenir_images/')
+      .replace(/\/storage\/v1\/object\/public\/souvenir images\//gi, '/storage/v1/object/public/souvenir_images/')
+      .replace(/\s+/g, '_') // Replace any remaining spaces with underscores
+      .replace(/%20/g, '_'); // Replace URL-encoded spaces with underscores
+  } catch (error) {
+    console.error('Error normalizing URL:', error);
+    return url; // Return original URL if normalization fails
+  }
+}
+
 // Main Deno serve function
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -116,13 +139,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const algorandTxId = await mintAlgorandNFT({ title, audioUrl, imageUrl, transcript, latitude, longitude }, supabase);
+    // Normalize URLs to ensure correct Supabase storage format
+    const normalizedAudioUrl = normalizeSupabaseUrl(audioUrl);
+    const normalizedImageUrl = normalizeSupabaseUrl(imageUrl);
+
+    const algorandTxId = await mintAlgorandNFT({ 
+      title, 
+      audioUrl: normalizedAudioUrl, 
+      imageUrl: normalizedImageUrl, 
+      transcript, 
+      latitude, 
+      longitude 
+    }, supabase);
 
     const { data: souvenir, error: dbError } = await supabase.from('souvenirs').insert({
       user_id: user.id,
       title,
-      audio_url: audioUrl,
-      image_url: imageUrl,
+      audio_url: normalizedAudioUrl,
+      image_url: normalizedImageUrl,
       transcript_text: transcript,
       algorand_tx_id: algorandTxId,
       latitude,
