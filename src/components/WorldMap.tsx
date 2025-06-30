@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import { Souvenir } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { Play, MapPin } from 'lucide-react';
+import { Play, MapPin, Navigation } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Custom marker icons
@@ -35,6 +35,8 @@ interface WorldMapProps {
   souvenirs: Souvenir[];
   onMapClick: (lat: number, lng: number) => void;
   selectedLocation?: { lat: number; lng: number } | null;
+  souvenirToHighlight?: Souvenir | null;
+  onSouvenirHighlighted?: () => void;
 }
 
 function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
@@ -46,9 +48,46 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
   return null;
 }
 
-export function WorldMap({ souvenirs, onMapClick, selectedLocation }: WorldMapProps) {
+function MapController({ souvenirToHighlight, onSouvenirHighlighted }: { 
+  souvenirToHighlight: Souvenir | null; 
+  onSouvenirHighlighted?: () => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (souvenirToHighlight) {
+      // Animate to the souvenir location
+      map.flyTo(
+        [Number(souvenirToHighlight.latitude), Number(souvenirToHighlight.longitude)], 
+        12, // zoom level
+        {
+          duration: 2, // animation duration in seconds
+          easeLinearity: 0.1
+        }
+      );
+
+      // Clear the highlight after animation
+      const timeout = setTimeout(() => {
+        onSouvenirHighlighted?.();
+      }, 3000); // Clear after 3 seconds
+
+      return () => clearTimeout(timeout);
+    }
+  }, [souvenirToHighlight, map, onSouvenirHighlighted]);
+
+  return null;
+}
+
+export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHighlight, onSouvenirHighlighted }: WorldMapProps) {
   const mapRef = useRef<any>(null);
   const [selectedSouvenir, setSelectedSouvenir] = useState<Souvenir | null>(null);
+
+  // Auto-select highlighted souvenir
+  useEffect(() => {
+    if (souvenirToHighlight) {
+      setSelectedSouvenir(souvenirToHighlight);
+    }
+  }, [souvenirToHighlight]);
 
   useEffect(() => {
     // Fix for default markers not showing
@@ -82,6 +121,10 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation }: WorldMapPr
         />
         
         <MapClickHandler onMapClick={onMapClick} />
+        <MapController 
+          souvenirToHighlight={souvenirToHighlight} 
+          onSouvenirHighlighted={onSouvenirHighlighted}
+        />
 
         {/* User's selected location */}
         {selectedLocation && (
@@ -103,12 +146,17 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation }: WorldMapPr
           <Marker
             key={souvenir.id}
             position={[souvenir.latitude, souvenir.longitude]}
-            icon={souvenirIcon}
+            icon={souvenirToHighlight?.id === souvenir.id ? userLocationIcon : souvenirIcon}
             eventHandlers={{
               click: () => setSelectedSouvenir(souvenir),
             }}
           >
-            <Popup className="custom-popup" minWidth={300}>
+            <Popup 
+              className="custom-popup" 
+              minWidth={300}
+              autoPan={true}
+              keepInView={true}
+            >
               <div className="space-y-3 p-2">
                 <div className="flex items-center gap-2">
                   <img
@@ -121,6 +169,17 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation }: WorldMapPr
                     <p className="text-xs text-gray-600">
                       {new Date(souvenir.created_at).toLocaleDateString()}
                     </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 text-xs text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Navigation className="w-3 h-3" />
+                    <span>Lat: {Number(souvenir.latitude).toFixed(6)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Navigation className="w-3 h-3" />
+                    <span>Lng: {Number(souvenir.longitude).toFixed(6)}</span>
                   </div>
                 </div>
                 
