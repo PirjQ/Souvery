@@ -198,7 +198,9 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
               autoPan={true}
               keepInView={true}
             >
-              <div className="space-y-3 p-2">
+              <div className="space-y-3 p-2" onMouseDown={(e) => {
+      e.stopPropagation();
+    }}>
                 <div className="flex items-center gap-2">
                   <img
                     src={souvenir.image_url}
