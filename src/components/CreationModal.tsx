@@ -6,7 +6,7 @@ import { Mic, Square, Upload, X, CheckCircle, ImageUp, Save, MapPin } from 'luci
 import { AnimatePresence, motion } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 import { LoadingOrb } from './LoadingOrb';
-import { useSouvenirs } from '@/hooks/useSouvenirs';
+import { useSouvenirs } from '@/hooks/useSouvenirs'; 
 import { Souvenir } from '@/types';
 
 interface CreationModalProps {
