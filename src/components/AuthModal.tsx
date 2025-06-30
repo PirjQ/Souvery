@@ -99,7 +99,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
     try {
       // Try to sign in with email first
-      let { error } = await supabase.auth.signInWithPassword({
+      let { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
