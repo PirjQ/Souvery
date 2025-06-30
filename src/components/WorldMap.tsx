@@ -69,9 +69,10 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
   return null;
 }
 
-function MapController({ souvenirToHighlight, onSouvenirHighlighted }: {
+function MapController({ souvenirToHighlight, onSouvenirHighlighted, selectedLocation }: {
   souvenirToHighlight: Souvenir | null;
   onSouvenirHighlighted?: () => void;
+  selectedLocation: { lat: number; lng: number } | null;
 }) {
   const map = useMap();
 
@@ -90,6 +91,15 @@ function MapController({ souvenirToHighlight, onSouvenirHighlighted }: {
       return () => clearTimeout(timeout);
     }
   }, [souvenirToHighlight, map, onSouvenirHighlighted]);
+
+  useEffect(() => {
+    if (selectedLocation) {
+      map.flyTo([selectedLocation.lat, selectedLocation.lng], map.getZoom(), {
+        duration: 1.5,
+        easeLinearity: 0.25,
+      });
+    }
+  }, [selectedLocation, map]);
 
   return null;
 }
@@ -211,6 +221,7 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
         <MapController
           souvenirToHighlight={souvenirToHighlight}
           onSouvenirHighlighted={onSouvenirHighlighted}
+          selectedLocation={selectedLocation}
         />
 
         {selectedLocation && (
