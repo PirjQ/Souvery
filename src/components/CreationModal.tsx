@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { ImageUploader } from './ImageUploader';
 import { LoadingOrb } from './LoadingOrb';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Upload } from 'lucide-react';
+import { LocateFixed, CheckCircle, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreationModalProps {
@@ -38,6 +38,34 @@ export function CreationModal({
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [isVerified, setIsVerified] = useState(false);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [currentLatitude, setLatitude] = useState(latitude);
+  const [currentLongitude, setLongitude] = useState(longitude);
+
+  const handleGetLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setIsFetchingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLatitude(latitude);
+        setLongitude(longitude);
+        setIsVerified(true);
+        setIsFetchingLocation(false);
+        toast.success("Location verified!");
+      },
+      () => {
+        toast.error("Unable to retrieve your location. Please enable location services.");
+        setIsFetchingLocation(false);
+      }
+    );
+  }, []);
 
   const handleClose = () => {
     setStep(1);
@@ -129,8 +157,9 @@ export function CreationModal({
           audioUrl,
           imageUrl,
           transcript: processingResult.transcript,
-          latitude,
-          longitude,
+          latitude: currentLatitude,
+          longitude: currentLongitude,
+          is_verified: isVerified,
         }),
       });
 
@@ -166,7 +195,40 @@ export function CreationModal({
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <div className="text-center space-y-4">
+
+              <div className="text-center space-y-2">
+                  <h3 className="text-lg font-medium text-cyan-400">Set Your Location</h3>
+                  <p className="text-gray-300 text-sm">
+                    Manually selected at: {currentLatitude.toFixed(4)}, {currentLongitude.toFixed(4)}
+                  </p>
+                  {isVerified && (
+                     <p className="text-sm font-medium text-fuchsia-400 flex items-center justify-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Location Verified
+                     </p>
+                  )}
+                </div>
+
+                {/* --- NEW BUTTON --- */}
+                <div className="flex justify-center">
+                   <Button
+                      onClick={handleGetLocation}
+                      disabled={isFetchingLocation}
+                      variant="outline"
+                      className="border-fuchsia-500/30 hover:border-fuchsia-400 hover:bg-fuchsia-500/10 text-fuchsia-400"
+                    >
+                      {isFetchingLocation ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <LocateFixed className="w-4 h-4 mr-2" />
+                      )}
+                      Use My Current Location
+                   </Button>
+                </div>
+                
+                <hr className="border-cyan-500/10" />  
+                
+                <div className="text-center space-y-4 pt-4">
                   <h3 className="text-lg font-medium text-cyan-400">Record Your Memory</h3>
                   <p className="text-gray-300">
                     Share a personal story or memory. It can be anything that's meaningful to you.
