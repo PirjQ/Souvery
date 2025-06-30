@@ -81,6 +81,8 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
   const mapRef = useRef<any>(null);
   const [selectedSouvenir, setSelectedSouvenir] = useState<Souvenir | null>(null);
 
+  const [isSeeking, setIsSeeking] = useState(false);
+
   // --- NEW: A ref to hold the popup container element ---
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -108,7 +110,9 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
     if (!audioElement) return;
 
     const handleTimeUpdate = () => {
-      if (!audioElement.duration) return;
+      if (isSeeking) return;
+      
+      if (!audioElement.duration || !isFinite(audioElement.duration)) return;
       setAudioState(prev => ({
         ...prev,
         progress: (audioElement.currentTime / audioElement.duration) * 100,
@@ -129,7 +133,21 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
       audioElement.removeEventListener('timeupdate', handleTimeUpdate);
       audioElement.removeEventListener('ended', handleEnded);
     };
-  }, [audioState.currentUrl]);
+  }, [audioState.currentUrl, isSeeking]);
+
+  // --- NEW: Handler for when the user drags the slider ---
+  const handleSeek = (value: number[]) => {
+    if (!audioRef.current || !audioRef.current.duration) return;
+
+    const newProgress = value[0];
+    const newTime = (newProgress / 100) * audioRef.current.duration;
+
+    // Update the audio's playback time
+    audioRef.current.currentTime = newTime;
+
+    // Also update the state to move the slider thumb immediately
+    setAudioState(prev => ({ ...prev, progress: newProgress }));
+  };
 
   const handlePlayToggle = (audioUrl: string) => {
     if (audioState.currentUrl !== audioUrl) {
@@ -253,7 +271,15 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
                       )}
                   </Button>
                   <div className="w-full">
-                      <Progress value={audioState.currentUrl === souvenir.audio_url ? audioState.progress : 0} className="h-2" />
+                      <Slider
+                        value={[audioState.currentUrl === souvenir.audio_url ? audioState.progress : 0]}
+                        onValueChange={handleSeek}
+                        onPointerDown={() => setIsSeeking(true)}
+                        onPointerUp={() => setIsSeeking(false)}
+                        max={100}
+                        step={1}
+                        className="w-full cursor-pointer"
+                      />
                   </div>
                 </div>
               </div>
