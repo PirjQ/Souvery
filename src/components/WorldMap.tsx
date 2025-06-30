@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback  } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L, { Icon } from 'leaflet';
+import { Slider } from '@/components/ui/slider';
 import { Souvenir } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { Play, Pause, MapPin, Navigation } from 'lucide-react';
