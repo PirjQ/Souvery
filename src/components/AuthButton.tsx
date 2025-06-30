@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase, type Profile } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { LogIn, LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AuthModal } from './AuthModal';
 import { AccountDialog } from './AccountDialog';
@@ -19,7 +19,7 @@ export function AuthButton({ user, onAuthChange }: AuthButtonProps) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    (_event, session) => {
         onAuthChange(session?.user ?? null);
         if (session?.user) {
           loadProfile(session.user.id);
