@@ -66,36 +66,34 @@ export function SearchSouvenirBar({ onSearch, disabled }: SearchSouvenirBarProps
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="flex flex-col">
+          <div>
             <Input
               type="number"
               value={latitude}
               onChange={(e) => setLatitude(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Latitude"
-              className="w-24 h-8 text-xs bg-gray-800 border-cyan-500/20 focus:border-cyan-400 text-white"
+              className="w-48 h-8 text-xs bg-gray-800 border-cyan-500/20 focus:border-cyan-400 text-white"
               disabled={disabled || isSearching}
               step="any"
               min="-90"
               max="90"
             />
-            <span className="text-xs text-gray-500 mt-1">-90 to 90</span>
           </div>
           
-          <div className="flex flex-col">
+          <div>
             <Input
               type="number"
               value={longitude}
               onChange={(e) => setLongitude(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Longitude"
-              className="w-24 h-8 text-xs bg-gray-800 border-cyan-500/20 focus:border-cyan-400 text-white"
+              className="w-48 h-8 text-xs bg-gray-800 border-cyan-500/20 focus:border-cyan-400 text-white"
               disabled={disabled || isSearching}
               step="any"
               min="-180"
               max="180"
             />
-            <span className="text-xs text-gray-500 mt-1">-180 to 180</span>
           </div>
         </div>
 
