@@ -147,7 +147,7 @@ function App() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000]"
+          className="absolute bottom-4 inset-x-0 mx-auto w-fit z-[1000]"
         >
           <SearchSouvenirBar
             onSearch={handleSearch}
