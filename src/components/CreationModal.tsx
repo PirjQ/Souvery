@@ -18,6 +18,7 @@ interface CreationModalProps {
   latitude: number;
   longitude: number;
   onSouvenirCreated: () => void;
+  onLocationVerified: (newCoords: { lat: number; lng: number }) => void;
 }
 
 interface ProcessingResult {
@@ -29,7 +30,8 @@ export function CreationModal({
   onClose, 
   latitude, 
   longitude, 
-  onSouvenirCreated 
+  onSouvenirCreated,
+  onLocationVerified
 }: CreationModalProps) {
   const [step, setStep] = useState(1);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -65,6 +67,7 @@ export function CreationModal({
         setLongitude(longitude);
         setIsVerified(true);
         setIsFetchingLocation(false);
+        onLocationVerified({ lat: latitude, lng: longitude });
         toast.success("Location verified!");
       },
       () => {
@@ -72,7 +75,7 @@ export function CreationModal({
         setIsFetchingLocation(false);
       }
     );
-  }, []);
+  }, [onLocationVerified]);
 
   const handleClose = () => {
     setStep(1);
