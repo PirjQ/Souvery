@@ -174,11 +174,7 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        whenReady={(map) => { // Rename whenCreated to whenReady
-          if (mapRef.current) {
-            (mapRef.current as any) = map;
-          }
-        }}
+        ref={mapRef}
         center={[20, 0]}
         zoom={2}
         className="w-full h-full"
