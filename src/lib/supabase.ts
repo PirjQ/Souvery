@@ -20,6 +20,7 @@ export type Souvenir = {
   algorand_tx_id: string | null;
   latitude: number;
   longitude: number;
+  is_verified: boolean;
 };
 
 export type Profile = {
