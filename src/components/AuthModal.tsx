@@ -90,50 +90,50 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleEmailSignIn = async () => {
-    if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields');
-      return;
-    }
+  async function handleEmailSignIn() {
+  if (!formData.email || !formData.password) {
+    toast.error('Please fill in all fields');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      // Try to sign in with email first
-      let { error } = await supabase.auth.signInWithPassword({
-  email: email,
-  password: password,
-});
+  setLoading(true);
+  try {
+    // Try to sign in with email first, using formData
+    let { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
 
-      // If email sign-in fails, try with username
-      if (error && error.message.includes('Invalid login credentials')) {
-        // Check if the input is a username by querying profiles
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('username', formData.email.toLowerCase())
-          .single();
+    // If email sign-in fails, try with username
+    if (error && error.message.includes('Invalid login credentials')) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', formData.email.toLowerCase())
+        .single();
 
-        if (profile) {
-          const result = await supabase.auth.signInWithPassword({
-            email: profile.email,
-            password: formData.password,
-          });
-          data = result.data;
-          error = result.error;
-        }
+      if (profile) {
+        const result = await supabase.auth.signInWithPassword({
+          email: profile.email,
+          password: formData.password,
+        });
+        // Re-assign data and error with the result of the second attempt
+        data = result.data;
+        error = result.error;
       }
-
-      if (error) throw error;
-
-      toast.success('Successfully signed in!');
-      onClose();
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      toast.error(error.message || 'Failed to sign in');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    if (error) throw error;
+
+    toast.success('Successfully signed in!');
+    onClose();
+  } catch (error: any) {
+    console.error('Sign in error:', error);
+    toast.error(error.message || 'Failed to sign in');
+  } finally {
+    setLoading(false);
+  }
+}
 
   const handleEmailSignUp = async () => {
     if (!formData.email || !formData.password || !formData.username || !formData.confirmPassword) {
