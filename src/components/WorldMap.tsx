@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
-import L, { Icon } from 'leaflet';
+import L, { Icon, Map } from 'leaflet';
 import { Slider } from '@/components/ui/slider';
 import { Souvenir } from '@/lib/supabase';
 import { Play, Pause, MapPin, Navigation, CheckCircle } from 'lucide-react';
@@ -105,7 +105,7 @@ function MapController({ souvenirToHighlight, onSouvenirHighlighted, selectedLoc
 
 // --- Main WorldMap Component ---
 export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHighlight, onSouvenirHighlighted }: WorldMapProps) {
-  const mapRef = useRef<L.Map>(null);
+  const mapRef = useRef<Map>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isSeeking, setIsSeeking] = useState(false);
   const [audioState, setAudioState] = useState({
@@ -174,7 +174,11 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        whenCreated={map => mapRef.current = map}
+        whenReady={(map) => { // Rename whenCreated to whenReady
+          if (mapRef.current) {
+            (mapRef.current as any) = map;
+          }
+        }}
         center={[20, 0]}
         zoom={2}
         className="w-full h-full"
