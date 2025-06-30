@@ -8,7 +8,7 @@ import { SearchSouvenirBar } from '@/components/SearchSouvenirBar';
 import { LoadingOrb } from '@/components/LoadingOrb';
 import { Toaster } from '@/components/ui/sonner';
 import { motion } from 'framer-motion';
-import { Music } from 'lucide-react';
+import logo from '/logo-removebg-preview.png';
 import { toast } from 'sonner';
 
 function App() {
@@ -106,18 +106,18 @@ function App() {
         className="relative z-10 bg-gray-900/90 backdrop-blur-sm border-b border-cyan-500/20"
       >
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <motion.div 
-            className="flex items-center gap-3"
-            whileHover={{ scale: 1.02 }}
-          >
-            <div className="p-2 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-lg">
-              <Music className="w-6 h-6 text-gray-900" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-cyan-400">Story Souvenir</h1>
-              <p className="text-xs text-gray-400">Decentralized Audio-Visual Storytelling</p>
-            </div>
-          </motion.div>
+          <a href="/" className="flex items-center gap-3 cursor-pointer">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-3"
+            >
+              <img src={logo} alt="Story Souvenir Logo" className="h-10 w-10" />
+              <div>
+                <h1 className="text-xl font-bold text-cyan-400">Story Souvenir</h1>
+                <p className="text-xs text-gray-400">Decentralized Audio-Visual Storytelling</p>
+              </div>
+            </motion.div>
+          </a>
 
           <AuthButton user={user} onAuthChange={setUser} />
         </div>
