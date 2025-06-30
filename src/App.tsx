@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase, type Souvenir } from '@/lib/supabase';
 import { AuthButton } from '@/components/AuthButton';
 import { WorldMap } from '@/components/WorldMap';
@@ -14,14 +14,19 @@ import { toast } from 'sonner';
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [souvenirs, setSouvenirs] = useState<Souvenir[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [souvenirToHighlight, setSouvenirToHighlight] = useState<Souvenir | null>(null);
+  const handleLocationVerified = (newCoords: { lat: number; lng: number }) => {
+    setSelectedLocation(newCoords);
+  };
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setUser(session?.user ?? null);
     });
 
@@ -92,6 +97,7 @@ function App() {
   }
 
   return (
+    
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
       <motion.header 
@@ -163,7 +169,13 @@ function App() {
           onClose={handleModalClose}
           latitude={selectedLocation.lat}
           longitude={selectedLocation.lng}
-          onSouvenirCreated={handleSouvenirCreated}
+          onSouvenirCreated={() => {
+          loadSouvenirs();
+          setIsModalOpen(false);
+          setSelectedLocation(null);
+        }}
+        // --- PASS THE NEW HANDLER AS A PROP ---
+        onLocationVerified={handleLocationVerified}
         />
       )}
 
