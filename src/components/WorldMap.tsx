@@ -3,10 +3,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 're
 import { Icon } from 'leaflet';
 import { Souvenir } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { Play, MapPin, Navigation } from 'lucide-react';
+import { Play, Pause, MapPin, Navigation } from 'lucide-react'; // Import Pause icon
+import { Progress } from '@/components/ui/progress'; // Import Progress component
 import 'leaflet/dist/leaflet.css';
 
-// Custom marker icons
+// Custom marker icons (no changes here)
 const userLocationIcon = new Icon({
   iconUrl: 'data:image/svg+xml;base64,' + btoa(`
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -56,20 +57,15 @@ function MapController({ souvenirToHighlight, onSouvenirHighlighted }: {
 
   useEffect(() => {
     if (souvenirToHighlight) {
-      // Animate to the souvenir location
       map.flyTo(
         [Number(souvenirToHighlight.latitude), Number(souvenirToHighlight.longitude)], 
-        12, // zoom level
-        {
-          duration: 2, // animation duration in seconds
-          easeLinearity: 0.1
-        }
+        12,
+        { duration: 2, easeLinearity: 0.1 }
       );
 
-      // Clear the highlight after animation
       const timeout = setTimeout(() => {
         onSouvenirHighlighted?.();
-      }, 3000); // Clear after 3 seconds
+      }, 3000);
 
       return () => clearTimeout(timeout);
     }
@@ -82,15 +78,69 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
   const mapRef = useRef<any>(null);
   const [selectedSouvenir, setSelectedSouvenir] = useState<Souvenir | null>(null);
 
-  // Auto-select highlighted souvenir
+  // --- NEW: State for managing audio playback ---
+  const [audioState, setAudioState] = useState<{
+    isPlaying: boolean;
+    currentUrl: string | null;
+    progress: number;
+  }>({
+    isPlaying: false,
+    currentUrl: null,
+    progress: 0,
+  });
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // --- NEW: Effect to manage audio player events ---
   useEffect(() => {
-    if (souvenirToHighlight) {
-      setSelectedSouvenir(souvenirToHighlight);
+    const audioElement = audioRef.current;
+    if (!audioElement) return;
+
+    const handleTimeUpdate = () => {
+      if (!audioElement.duration) return;
+      setAudioState(prev => ({
+        ...prev,
+        progress: (audioElement.currentTime / audioElement.duration) * 100,
+      }));
+    };
+
+    const handleEnded = () => {
+      setAudioState({ isPlaying: false, currentUrl: audioState.currentUrl, progress: 100 });
+      setTimeout(() => {
+         setAudioState({ isPlaying: false, currentUrl: null, progress: 0 });
+      }, 300);
+    };
+
+    audioElement.addEventListener('timeupdate', handleTimeUpdate);
+    audioElement.addEventListener('ended', handleEnded);
+
+    return () => {
+      audioElement.removeEventListener('timeupdate', handleTimeUpdate);
+      audioElement.removeEventListener('ended', handleEnded);
+    };
+  }, [audioState.currentUrl]);
+
+  // --- NEW: Handler for toggling play/pause ---
+  const handlePlayToggle = (audioUrl: string) => {
+    // If it's a different track, create a new audio object
+    if (audioState.currentUrl !== audioUrl) {
+      audioRef.current?.pause();
+      const newAudio = new Audio(audioUrl);
+      audioRef.current = newAudio;
+      newAudio.play().catch(e => console.error("Audio play error:", e));
+      setAudioState({ isPlaying: true, currentUrl: audioUrl, progress: 0 });
+    } else {
+      // If it's the same track, toggle play/pause
+      if (audioState.isPlaying) {
+        audioRef.current?.pause();
+        setAudioState(prev => ({ ...prev, isPlaying: false }));
+      } else {
+        audioRef.current?.play().catch(e => console.error("Audio play error:", e));
+        setAudioState(prev => ({ ...prev, isPlaying: true }));
+      }
     }
-  }, [souvenirToHighlight]);
+  };
 
   useEffect(() => {
-    // Fix for default markers not showing
     delete (Icon.Default.prototype as any)._getIconUrl;
     Icon.Default.mergeOptions({
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -98,13 +148,9 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
     });
   }, []);
-
-  const playAudio = (audioUrl: string) => {
-    const audio = new Audio(audioUrl);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-    });
-  };
+  
+  // --- DELETED: The old playAudio function is no longer needed. ---
+  // const playAudio = (audioUrl: string) => { ... };
 
   return (
     <div className="relative w-full h-full">
@@ -126,12 +172,8 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
           onSouvenirHighlighted={onSouvenirHighlighted}
         />
 
-        {/* User's selected location */}
         {selectedLocation && (
-          <Marker
-            position={[selectedLocation.lat, selectedLocation.lng]}
-            icon={userLocationIcon}
-          >
+          <Marker position={[selectedLocation.lat, selectedLocation.lng]} icon={userLocationIcon}>
             <Popup className="custom-popup">
               <div className="text-center p-2">
                 <MapPin className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
@@ -141,7 +183,6 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
           </Marker>
         )}
 
-        {/* Existing souvenirs */}
         {souvenirs.map((souvenir) => (
           <Marker
             key={souvenir.id}
@@ -149,6 +190,13 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
             icon={souvenirToHighlight?.id === souvenir.id ? userLocationIcon : souvenirIcon}
             eventHandlers={{
               click: () => setSelectedSouvenir(souvenir),
+              // --- NEW: Stop audio when popup closes ---
+              popupclose: () => {
+                if (audioRef.current && audioState.currentUrl === souvenir.audio_url) {
+                  audioRef.current.pause();
+                  setAudioState({ isPlaying: false, currentUrl: null, progress: 0 });
+                }
+              }
             }}
           >
             <Popup 
@@ -175,11 +223,11 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
                 <div className="flex items-center gap-4 text-xs text-gray-600">
                   <div className="flex items-center gap-1">
                     <Navigation className="w-3 h-3" />
-                    <span>Lat: {Number(souvenir.latitude).toFixed(6)}</span>
+                    <span>Lat: {Number(souvenir.latitude).toFixed(4)}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Navigation className="w-3 h-3" />
-                    <span>Lng: {Number(souvenir.longitude).toFixed(6)}</span>
+                    <span>Lng: {Number(souvenir.longitude).toFixed(4)}</span>
                   </div>
                 </div>
                 
@@ -187,20 +235,29 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
                   {souvenir.transcript_text}
                 </p>
                 
-                <button
-                  onClick={() => playAudio(souvenir.audio_url)}
-                  className="flex items-center gap-2 px-3 py-1 bg-cyan-500 text-white rounded-full text-sm hover:bg-cyan-600 transition-colors"
-                >
-                  <Play className="w-3 h-3" />
-                  Play Story
-                </button>
+                {/* --- UPDATED: Replaced simple button with player UI --- */}
+                <div className="flex items-center gap-3 w-full mt-2">
+                  <Button
+                      onClick={() => handlePlayToggle(souvenir.audio_url)}
+                      size="icon"
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-10 h-10 p-0 flex-shrink-0"
+                  >
+                      {audioState.isPlaying && audioState.currentUrl === souvenir.audio_url ? (
+                          <Pause className="w-4 h-4" />
+                      ) : (
+                          <Play className="w-4 h-4" />
+                      )}
+                  </Button>
+                  <div className="w-full">
+                      <Progress value={audioState.currentUrl === souvenir.audio_url ? audioState.progress : 0} className="h-2" />
+                  </div>
+                </div>
               </div>
             </Popup>
           </Marker>
         ))}
       </MapContainer>
 
-      {/* Instructions overlay */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
