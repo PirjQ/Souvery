@@ -149,7 +149,7 @@ export function CreationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-gray-900 border-cyan-500/20 text-white max-w-2xl">
+      <DialogContent className="bg-gray-900 border-cyan-500/20 text-white max-w-2xl z-[9999]">
         <DialogHeader>
           <DialogTitle className="text-cyan-400 text-xl">Create Your Story Souvenir</DialogTitle>
         </DialogHeader>
