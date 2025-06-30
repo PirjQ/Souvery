@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase, type Profile } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { motion } from 'framer-motion';
 import { User as UserIcon, Lock, CheckCircle, XCircle, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
