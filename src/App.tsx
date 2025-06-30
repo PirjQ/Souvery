@@ -118,7 +118,7 @@ function App() {
       </motion.header>
 
       {/* Main content */}
-      <main className="relative w-full h-[calc(100vh-80px)]">
+      <main className="relative h-[calc(100vh-80px)]">
         <WorldMap
           souvenirs={souvenirs}
           onMapClick={handleMapClick}
