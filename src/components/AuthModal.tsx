@@ -99,10 +99,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
     try {
       // Try to sign in with email first
-      let { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
+      let { error } = await supabase.auth.signInWithPassword({
+  email: email,
+  password: password,
+});
 
       // If email sign-in fails, try with username
       if (error && error.message.includes('Invalid login credentials')) {
