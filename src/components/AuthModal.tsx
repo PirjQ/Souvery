@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/lib/supabase';
-import { motion } from 'framer-motion';
 import { LogIn, UserPlus, Mail, Lock, User, Chrome, CheckCircle, XCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -100,7 +99,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
     try {
       // Try to sign in with email first
-      let { data, error } = await supabase.auth.signInWithPassword({
+      let { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
