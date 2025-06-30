@@ -98,8 +98,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   setLoading(true);
   try {
-    // Try to sign in with email first, using formData
-    let { data, error } = await supabase.auth.signInWithPassword({
+    // We remove 'data' from this initial sign-in attempt.
+    let { error } = await supabase.auth.signInWithPassword({
       email: formData.email,
       password: formData.password,
     });
@@ -113,18 +113,20 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         .single();
 
       if (profile) {
+        // We only care about the 'error' from the second attempt.
         const result = await supabase.auth.signInWithPassword({
           email: profile.email,
           password: formData.password,
         });
-        // Re-assign data and error with the result of the second attempt
-        data = result.data;
+        // We re-assign 'error' but no longer need to handle 'data'.
         error = result.error;
       }
     }
 
+    // This check now correctly handles errors from both sign-in attempts.
     if (error) throw error;
 
+    // Upon success, no 'data' object is needed.
     toast.success('Successfully signed in!');
     onClose();
   } catch (error: any) {
@@ -133,7 +135,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   } finally {
     setLoading(false);
   }
-}
+};
 
   const handleEmailSignUp = async () => {
     if (!formData.email || !formData.password || !formData.username || !formData.confirmPassword) {
