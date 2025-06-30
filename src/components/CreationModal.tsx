@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; 
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Mic, Square, Upload, X, CheckCircle, ImageUp, Save, MapPin } from 'lucide-react';
