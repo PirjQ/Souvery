@@ -39,12 +39,12 @@ const verifiedSouvenirIcon = new Icon({
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="verifiedGradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#d946ef"/>
-          <stop offset="100%" stop-color="#ec4899"/>
+          <stop offset="0%" stop-color="#d946ef" />
+          <stop offset="100%" stop-color="#ec4899" />
         </linearGradient>
       </defs>
       <circle cx="12" cy="12" r="8" fill="url(#verifiedGradient)" stroke="#111827" stroke-width="2"/>
-      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" fill="white" fill-opacity="0.9"/>
+      <circle cx="12" cy="12" r="3" fill="#111827"/>
     </svg>
   `),
   iconSize: [28, 28],
