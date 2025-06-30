@@ -106,5 +106,6 @@ body {
 }
 
 .leaflet-popup-content-wrapper {
-  z-index: 1001 !important;
+  position: relative;
+  z-index: 2 !important;
 }
