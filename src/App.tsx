@@ -11,7 +11,7 @@ import { LoadingOrb } from '@/components/LoadingOrb';
 import { Toaster } from '@/components/ui/sonner';
 import { motion } from 'framer-motion';
 import logo from '/logo-removebg-preview.png';
-import boltBadge from '/bolt-badge-white.png';
+import boltBadge from '/black_circle_360x360.png';
 import { toast } from 'sonner';
 
 function App() {
