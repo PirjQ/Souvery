@@ -1,5 +1,7 @@
+// src/App.tsx
+
 import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import { supabase, type Souvenir } from '@/lib/supabase';
 import { AuthButton } from '@/components/AuthButton';
 import { WorldMap } from '@/components/WorldMap';
@@ -8,13 +10,13 @@ import { SearchSouvenirBar } from '@/components/SearchSouvenirBar';
 import { LoadingOrb } from '@/components/LoadingOrb';
 import { Toaster } from '@/components/ui/sonner';
 import { motion } from 'framer-motion';
-import { Music } from 'lucide-react';
+import logo from '/logo-removebg-preview.png';
+import boltBadge from '/bolt-badge-white.png';
 import { toast } from 'sonner';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [souvenirs, setSouvenirs] = useState<Souvenir[]>([]);
-  const [session, setSession] = useState<Session | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,6 @@ function App() {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       setUser(session?.user ?? null);
     });
 
@@ -65,14 +66,8 @@ function App() {
     setSelectedLocation(null);
   };
 
-  const handleSouvenirCreated = () => {
-    loadSouvenirs();
-    setSelectedLocation(null);
-  };
-
   const handleSearch = async (latitude: number, longitude: number) => {
-    // Find souvenir with matching coordinates (with small tolerance for floating point comparison)
-    const tolerance = 0.0001; // Approximately 11 meters
+    const tolerance = 0.0001;
     const foundSouvenir = souvenirs.find(souvenir => {
       const latDiff = Math.abs(Number(souvenir.latitude) - latitude);
       const lngDiff = Math.abs(Number(souvenir.longitude) - longitude);
@@ -97,8 +92,21 @@ function App() {
   }
 
   return (
-    
     <div className="min-h-screen bg-gray-900 text-white">
+      {/* Bolt Badge */}
+      <a
+        href="https://bolt.new/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed top-20 right-4 z-[9998] transition-transform duration-300 hover:scale-105"
+      >
+        <img
+          src={boltBadge}
+          alt="Powered by Bolt.new"
+          className="w-20 h-20 md:w-24 md:h-24"
+        />
+      </a>
+
       {/* Header */}
       <motion.header 
         initial={{ opacity: 0, y: -20 }}
@@ -106,19 +114,18 @@ function App() {
         className="relative z-10 bg-gray-900/90 backdrop-blur-sm border-b border-cyan-500/20"
       >
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <motion.div 
-            className="flex items-center gap-3"
-            whileHover={{ scale: 1.02 }}
-          >
-            <div className="p-2 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-lg">
-              <Music className="w-6 h-6 text-gray-900" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-cyan-400">Story Souvenir</h1>
-              <p className="text-xs text-gray-400">Decentralized Audio-Visual Storytelling</p>
-            </div>
-          </motion.div>
-
+          <a href="/" className="flex items-center gap-3 cursor-pointer">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-3"
+            >
+              <img src={logo} alt="Story Souvenir Logo" className="h-10 w-10" />
+              <div>
+                <h1 className="text-xl font-bold text-cyan-400">Story Souvenir</h1>
+                <p className="text-xs text-gray-400">Decentralized Audio-Visual Storytelling</p>
+              </div>
+            </motion.div>
+          </a>
           <AuthButton user={user} onAuthChange={setUser} />
         </div>
       </motion.header>
@@ -132,8 +139,6 @@ function App() {
           souvenirToHighlight={souvenirToHighlight}
           onSouvenirHighlighted={() => setSouvenirToHighlight(null)}
         />
-
-        {/* Statistics overlay */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -148,8 +153,6 @@ function App() {
             </div>
           </div>
         </motion.div>
-
-        {/* Search Souvenir Bar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -170,12 +173,11 @@ function App() {
           latitude={selectedLocation.lat}
           longitude={selectedLocation.lng}
           onSouvenirCreated={() => {
-          loadSouvenirs();
-          setIsModalOpen(false);
-          setSelectedLocation(null);
-        }}
-        // --- PASS THE NEW HANDLER AS A PROP ---
-        onLocationVerified={handleLocationVerified}
+            loadSouvenirs();
+            setIsModalOpen(false);
+            setSelectedLocation(null);
+          }}
+          onLocationVerified={handleLocationVerified}
         />
       )}
 
@@ -190,25 +192,6 @@ function App() {
           },
         }}
       />
-
-      <style jsx global>{`
-        .leaflet-popup-content-wrapper {
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-        
-        .leaflet-popup-tip {
-          background: white;
-        }
-        
-        .line-clamp-3 {
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
     </div>
   );
 }
