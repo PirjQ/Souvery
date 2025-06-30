@@ -44,6 +44,13 @@ export function CreationModal({
   const [currentLatitude, setLatitude] = useState(latitude);
   const [currentLongitude, setLongitude] = useState(longitude);
 
+  useEffect(() => {
+    setLatitude(latitude);
+    setLongitude(longitude);
+    // Also reset verification status when the location changes
+    setIsVerified(false); 
+  }, [latitude, longitude]);
+
   const handleGetLocation = useCallback(() => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser.");
