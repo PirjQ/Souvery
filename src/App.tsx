@@ -4,10 +4,12 @@ import { supabase, type Souvenir } from '@/lib/supabase';
 import { AuthButton } from '@/components/AuthButton';
 import { WorldMap } from '@/components/WorldMap';
 import { CreationModal } from '@/components/CreationModal';
+import { SearchSouvenirBar } from '@/components/SearchSouvenirBar';
 import { LoadingOrb } from '@/components/LoadingOrb';
 import { Toaster } from '@/components/ui/sonner';
 import { motion } from 'framer-motion';
 import { Music } from 'lucide-react';
+import { toast } from 'sonner';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -15,6 +17,7 @@ function App() {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [souvenirToHighlight, setSouvenirToHighlight] = useState<Souvenir | null>(null);
 
   useEffect(() => {
     // Get initial session
@@ -62,6 +65,24 @@ function App() {
     setSelectedLocation(null);
   };
 
+  const handleSearch = async (latitude: number, longitude: number) => {
+    // Find souvenir with matching coordinates (with small tolerance for floating point comparison)
+    const tolerance = 0.0001; // Approximately 11 meters
+    const foundSouvenir = souvenirs.find(souvenir => {
+      const latDiff = Math.abs(Number(souvenir.latitude) - latitude);
+      const lngDiff = Math.abs(Number(souvenir.longitude) - longitude);
+      return latDiff <= tolerance && lngDiff <= tolerance;
+    });
+
+    if (foundSouvenir) {
+      setSouvenirToHighlight(foundSouvenir);
+      toast.success(`Found souvenir: "${foundSouvenir.title}"`);
+    } else {
+      toast.error('No souvenir found at these coordinates');
+      setSouvenirToHighlight(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -102,6 +123,8 @@ function App() {
           souvenirs={souvenirs}
           onMapClick={handleMapClick}
           selectedLocation={selectedLocation}
+          souvenirToHighlight={souvenirToHighlight}
+          onSouvenirHighlighted={() => setSouvenirToHighlight(null)}
         />
 
         {/* Statistics overlay */}
@@ -118,6 +141,18 @@ function App() {
               Explore memories from around the world
             </div>
           </div>
+        </motion.div>
+
+        {/* Search Souvenir Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000]"
+        >
+          <SearchSouvenirBar
+            onSearch={handleSearch}
+            disabled={loading}
+          />
         </motion.div>
       </main>
 
