@@ -27,7 +27,6 @@ async function mintAlgorandNFT(souvenir, supabase) {
       "properties": {
         "latitude": souvenir.latitude,
         "longitude": souvenir.longitude,
-        "audio_url": souvenir.audioUrl,
         "created_at": new Date().toISOString(),
         "story_type": "audio_visual_memory"
       }
