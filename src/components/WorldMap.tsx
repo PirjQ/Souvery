@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback  } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import L, { Icon } from 'leaflet';
 import { Souvenir } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { Play, Pause, MapPin, Navigation } from 'lucide-react';
@@ -80,6 +80,17 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
   const mapRef = useRef<any>(null);
   const [selectedSouvenir, setSelectedSouvenir] = useState<Souvenir | null>(null);
 
+  // --- NEW: A ref to hold the popup container element ---
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // --- NEW: Use a useCallback to attach the Leaflet event stopper ---
+  const popupContainerRef = useCallback((node: HTMLDivElement) => {
+    if (node !== null) {
+      // This is the key: Use Leaflet's own utility to stop clicks
+      L.DomEvent.disableClickPropagation(node);
+    }
+  }, []);
+  
   const [audioState, setAudioState] = useState<{
     isPlaying: boolean;
     currentUrl: string | null;
@@ -198,7 +209,7 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
               autoPan={true}
               keepInView={true}
             >
-              <div className="space-y-3 p-2" onMouseDown={(e) => { e.stopPropagation(); }}>
+              <div className="space-y-3 p-2" ref={popupContainerRef}>
                 <div className="flex items-center gap-2">
                   <img
                     src={souvenir.image_url}
