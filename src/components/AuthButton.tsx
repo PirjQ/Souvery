@@ -5,6 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { LogIn, LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AuthModal } from './AuthModal';
+import { AccountDialog } from './AccountDialog';
 
 interface AuthButtonProps {
   user: User | null;
@@ -14,6 +15,7 @@ interface AuthButtonProps {
 export function AuthButton({ user, onAuthChange }: AuthButtonProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -57,29 +59,50 @@ export function AuthButton({ user, onAuthChange }: AuthButtonProps) {
     }
   };
 
+  const handleProfileUpdate = () => {
+    if (user) {
+      loadProfile(user.id);
+    }
+  };
+
   if (user) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3"
-      >
-        <div className="flex items-center gap-2 text-cyan-400">
-          <UserIcon className="w-4 h-4" />
-          <span className="text-sm font-medium">
-            {profile?.username || user.email}
-          </span>
-        </div>
-        <Button
-          onClick={handleSignOut}
-          variant="outline"
-          size="sm"
-          className="border-cyan-500/20 hover:border-cyan-400 hover:bg-cyan-500/10 text-cyan-400 hover:text-cyan-300"
+      <>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3"
         >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
-        </Button>
-      </motion.div>
+          <motion.div 
+            className="flex items-center gap-2 text-cyan-400 cursor-pointer hover:text-cyan-300 transition-colors"
+            onClick={() => setIsAccountModalOpen(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <UserIcon className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {profile?.username || user.email}
+            </span>
+          </motion.div>
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="border-cyan-500/20 hover:border-cyan-400 hover:bg-cyan-500/10 text-cyan-400 hover:text-cyan-300"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
+        </motion.div>
+
+        <AccountDialog
+          isOpen={isAccountModalOpen}
+          onClose={() => setIsAccountModalOpen(false)}
+          user={user}
+          profile={profile}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      </>
     );
   }
 
