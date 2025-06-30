@@ -206,7 +206,8 @@ export function CreationModal({
               <div className="text-center space-y-2">
                   <h3 className="text-lg font-medium text-cyan-400">Set Your Location</h3>
                   <p className="text-gray-300 text-sm">
-                    Manually selected at: {currentLatitude.toFixed(4)}, {currentLongitude.toFixed(4)}
+                    {isVerified ? 'Location verified at: ' : 'Manually selected at: '}
+  {currentLatitude.toFixed(4)}, {currentLongitude.toFixed(4)}
                   </p>
                   {isVerified && (
                      <p className="text-sm font-medium text-fuchsia-400 flex items-center justify-center gap-2">
