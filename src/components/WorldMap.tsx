@@ -3,8 +3,9 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 're
 import { Icon } from 'leaflet';
 import { Souvenir } from '@/lib/supabase';
 import { motion } from 'framer-motion';
-import { Play, Pause, MapPin, Navigation } from 'lucide-react'; // Import Pause icon
-import { Progress } from '@/components/ui/progress'; // Import Progress component
+import { Play, Pause, MapPin, Navigation } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button'; // <--- ADD THIS LINE
 import 'leaflet/dist/leaflet.css';
 
 // Custom marker icons (no changes here)
@@ -32,6 +33,7 @@ const souvenirIcon = new Icon({
   popupAnchor: [0, -24],
 });
 
+
 interface WorldMapProps {
   souvenirs: Souvenir[];
   onMapClick: (lat: number, lng: number) => void;
@@ -49,8 +51,8 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
   return null;
 }
 
-function MapController({ souvenirToHighlight, onSouvenirHighlighted }: { 
-  souvenirToHighlight: Souvenir | null; 
+function MapController({ souvenirToHighlight, onSouvenirHighlighted }: {
+  souvenirToHighlight: Souvenir | null;
   onSouvenirHighlighted?: () => void;
 }) {
   const map = useMap();
@@ -58,7 +60,7 @@ function MapController({ souvenirToHighlight, onSouvenirHighlighted }: {
   useEffect(() => {
     if (souvenirToHighlight) {
       map.flyTo(
-        [Number(souvenirToHighlight.latitude), Number(souvenirToHighlight.longitude)], 
+        [Number(souvenirToHighlight.latitude), Number(souvenirToHighlight.longitude)],
         12,
         { duration: 2, easeLinearity: 0.1 }
       );
@@ -78,7 +80,6 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
   const mapRef = useRef<any>(null);
   const [selectedSouvenir, setSelectedSouvenir] = useState<Souvenir | null>(null);
 
-  // --- NEW: State for managing audio playback ---
   const [audioState, setAudioState] = useState<{
     isPlaying: boolean;
     currentUrl: string | null;
@@ -89,8 +90,7 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
     progress: 0,
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  // --- NEW: Effect to manage audio player events ---
+
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
@@ -119,9 +119,7 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
     };
   }, [audioState.currentUrl]);
 
-  // --- NEW: Handler for toggling play/pause ---
   const handlePlayToggle = (audioUrl: string) => {
-    // If it's a different track, create a new audio object
     if (audioState.currentUrl !== audioUrl) {
       audioRef.current?.pause();
       const newAudio = new Audio(audioUrl);
@@ -129,7 +127,6 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
       newAudio.play().catch(e => console.error("Audio play error:", e));
       setAudioState({ isPlaying: true, currentUrl: audioUrl, progress: 0 });
     } else {
-      // If it's the same track, toggle play/pause
       if (audioState.isPlaying) {
         audioRef.current?.pause();
         setAudioState(prev => ({ ...prev, isPlaying: false }));
@@ -148,9 +145,6 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
     });
   }, []);
-  
-  // --- DELETED: The old playAudio function is no longer needed. ---
-  // const playAudio = (audioUrl: string) => { ... };
 
   return (
     <div className="relative w-full h-full">
@@ -165,10 +159,10 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
           url="https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
-        
+
         <MapClickHandler onMapClick={onMapClick} />
-        <MapController 
-          souvenirToHighlight={souvenirToHighlight} 
+        <MapController
+          souvenirToHighlight={souvenirToHighlight}
           onSouvenirHighlighted={onSouvenirHighlighted}
         />
 
@@ -190,7 +184,6 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
             icon={souvenirToHighlight?.id === souvenir.id ? userLocationIcon : souvenirIcon}
             eventHandlers={{
               click: () => setSelectedSouvenir(souvenir),
-              // --- NEW: Stop audio when popup closes ---
               popupclose: () => {
                 if (audioRef.current && audioState.currentUrl === souvenir.audio_url) {
                   audioRef.current.pause();
@@ -199,8 +192,8 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
               }
             }}
           >
-            <Popup 
-              className="custom-popup" 
+            <Popup
+              className="custom-popup"
               minWidth={300}
               autoPan={true}
               keepInView={true}
@@ -219,7 +212,7 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4 text-xs text-gray-600">
                   <div className="flex items-center gap-1">
                     <Navigation className="w-3 h-3" />
@@ -230,12 +223,11 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
                     <span>Lng: {Number(souvenir.longitude).toFixed(4)}</span>
                   </div>
                 </div>
-                
+
                 <p className="text-sm text-gray-700 line-clamp-3">
                   {souvenir.transcript_text}
                 </p>
-                
-                {/* --- UPDATED: Replaced simple button with player UI --- */}
+
                 <div className="flex items-center gap-3 w-full mt-2">
                   <Button
                       onClick={() => handlePlayToggle(souvenir.audio_url)}
