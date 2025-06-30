@@ -100,32 +100,3 @@ body {
   color: #22d3ee !important;
 }
 
-/* Ensure modals appear above Leaflet map */
-[data-radix-popper-content-wrapper] {
-  z-index: 9999;
-}
-
-[role="dialog"] {
-  z-index: 9999;
-}
-
-.fixed.inset-0 {
-  z-index: 9998;
-}
-
-/* Ensure dialog content and buttons are interactive */
-[data-radix-dialog-content] {
-  z-index: 10000;
-  pointer-events: auto !important;
-}
-
-[data-radix-dialog-overlay] {
-  z-index: 9999;
-}
-
-/* Ensure buttons in modals are clickable */
-[role="dialog"] button {
-  pointer-events: auto !important;
-  position: relative;
-  z-index: 10001;
-}
