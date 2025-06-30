@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button'; 
+import { Button } from '@/components/ui/button';
 import { Mic, Square, Upload, X, CheckCircle, ImageUp, Save, MapPin } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
@@ -61,7 +61,7 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
       recorder.onstop = () => {
         const blob = new Blob(audioChunks, { type: 'audio/wav' });
         setAudioBlob(blob);
-        stream.getTracks().forEach(track => track.stop()); // Stop the microphone access
+        stream.getTracks().forEach(track => track.stop());
       };
 
       setIsRecording(true);
@@ -79,41 +79,50 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
     }
   };
 
-  const handleUploadAndProcess = async () => {
+  const uploadAudio = async () => {
     if (!audioBlob) return;
-
     setLoading(true);
-    setStep(2); // Immediately go to the processing screen
 
     try {
-      // 1. Upload Audio
       const fileName = `audio_${Date.now()}.wav`;
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from('audio_stories')
         .upload(fileName, audioBlob);
 
-      if (uploadError) throw uploadError;
+      if (error) throw error;
 
-      const { data: urlData } = supabase.storage
+      const { data } = supabase.storage
         .from('audio_stories')
         .getPublicUrl(fileName);
 
-      const newAudioUrl = urlData.publicUrl;
-      setAudioUrl(newAudioUrl);
+      setAudioUrl(data.publicUrl);
+      setStep(2); // Move to processing step
+    } catch (error) {
+      console.error('Error uploading audio:', error);
+      toast.error('Failed to upload audio. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // 2. Process Audio automatically
+  const processAudio = async () => {
+    if (!audioUrl) return;
+    setLoading(true);
+    try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Not authenticated');
+      if (!session?.access_token) {
+          throw new Error('Not authenticated');
+      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-audio`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ audioUrl: newAudioUrl }),
+        body: JSON.stringify({ audioUrl }),
       });
-
+      
       if (!response.ok) {
           const errorBody = await response.text();
           console.error("Audio processing failed:", errorBody);
@@ -122,14 +131,12 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
 
       const result = await response.json();
       setProcessingResult(result);
-      setStep(3); // Move to image upload step on success
-
+      setStep(3); // Move to image upload step
     } catch (error) {
-      console.error('Error uploading or processing audio:', error);
-      toast.error('Failed to process your story. Please try again.');
-      setStep(1); // Go back to the recording step on failure
+        console.error('Error processing audio:', error);
+        toast.error('Failed to process your story. Please try again.');
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
@@ -138,7 +145,7 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
-      setStep(4); // Move to generate image step
+      setStep(4);
     }
   };
 
@@ -151,39 +158,40 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
   const generateImage = async () => {
     if (!processingResult?.transcript) return;
     setLoading(true);
-    setStep(5); // Show generating view
+    setStep(5);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-       if (!session?.access_token) throw new Error('Not authenticated');
+       const { data: { session } } = await supabase.auth.getSession();
+       if (!session?.access_token) {
+           throw new Error('Not authenticated');
+       }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({ prompt: processingResult.transcript }),
       });
-
-       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error("Image generation failed:", errorBody);
-        throw new Error('Failed to generate image');
-       }
+      
+      if (!response.ok) {
+          const errorBody = await response.text();
+          console.error("Image generation failed:", errorBody);
+          throw new Error('Failed to generate image');
+      }
 
       const { imageUrl } = await response.json();
       setGeneratedImageUrl(imageUrl);
       setStep(6);
     } catch (error) {
       console.error('Error generating image:', error);
-      toast.error('Could not generate an image from your story. Please try again.');
-      setStep(3); // Go back to transcript view
+      toast.error('Could not generate an image from your story.');
+      setStep(3); // Revert to transcript view
     } finally {
       setLoading(false);
     }
   };
-
 
   const handleSaveSouvenir = async () => {
     if (!processingResult || !generatedImageUrl || !audioUrl || !location) {
@@ -193,7 +201,9 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
     setLoading(true);
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('User not authenticated.');
+        if (!user) {
+            throw new Error('User not authenticated.');
+        }
 
         const newSouvenir: Omit<Souvenir, 'id' | 'created_at'> = {
             user_id: user.id,
@@ -204,7 +214,7 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
             location: `POINT(${location.lng} ${location.lat})`,
             transcript: processingResult.transcript,
         };
-
+        
         const { data, error } = await supabase
             .from('souvenirs')
             .insert([newSouvenir])
@@ -224,7 +234,6 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
         setLoading(false);
     }
   };
-
 
   const resetState = () => {
     setStep(1);
@@ -260,7 +269,7 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
 
   const renderContent = () => {
     switch (step) {
-      case 1: // Record Audio
+      case 1: // Record and Upload
         return (
           <motion.div
             key="step1"
@@ -294,42 +303,47 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
               <Button variant="ghost" onClick={handleClose}>Cancel</Button>
               {audioBlob && (
                 <Button
-                    onClick={handleUploadAndProcess}
-                    disabled={loading}
-                    className="bg-cyan-500 hover:bg-cyan-400 text-gray-900"
+                  onClick={uploadAudio}
+                  disabled={loading}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-gray-900"
                 >
-                    {loading ? (
-                        <>
-                          <LoadingOrb size="sm" className="mr-2" />
-                          Uploading...
-                        </>
-                    ) : (
-                        <>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload & Continue
-                        </>
-                    )}
+                  {loading ? (
+                    <>
+                      <LoadingOrb size="sm" className="mr-2" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload & Continue
+                    </>
+                  )}
                 </Button>
               )}
             </div>
           </motion.div>
         );
 
-      case 2: // Processing Audio
+      case 2: // Process Audio
         return (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6 text-center"
-            >
-              <h3 className="text-lg font-medium text-cyan-400">Processing Your Story</h3>
-              <p className="text-gray-300">
-                Our AI is transcribing your audio. This may take a moment...
-              </p>
-              <LoadingOrb size="lg" className="my-8" />
-            </motion.div>
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <h3 className="text-xl font-medium text-cyan-400">Process Your Story</h3>
+            <p className="text-gray-300">
+              Your audio has been uploaded. Click below to transcribe it into text.
+            </p>
+            <audio src={audioUrl!} controls className="w-full" />
+            <div className="flex justify-center pt-4">
+              <Button onClick={processAudio} disabled={loading} className="bg-cyan-500 hover:bg-cyan-400 text-gray-900">
+                {loading ? <LoadingOrb size="sm" /> : 'Process Audio'}
+              </Button>
+            </div>
+          </motion.div>
         );
 
       case 3: // Show Transcript & Upload Image
@@ -349,8 +363,8 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
                 Use this transcript to generate an image for your Souvenir.
             </p>
             <div className="flex justify-center space-x-4 pt-4">
-               <Button variant="outline" onClick={() => setStep(1)}>
-                 Re-record
+               <Button variant="outline" onClick={() => setStep(2)}>
+                 Go Back
                </Button>
                <Button onClick={generateImage} className="bg-cyan-500 hover:bg-cyan-400 text-gray-900">
                  <ImageUp className="w-4 h-4 mr-2" />
@@ -359,10 +373,7 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
             </div>
           </motion.div>
         );
-      
-      case 4: // This step is now skipped as we auto-generate, but keeping for reference if needed
-        return (<div>Step 4 Placeholder</div>);
-
+      case 4: // Not used in AI generation flow, can be used for manual image upload
       case 5: // Generating Image
         return (
             <motion.div
@@ -379,7 +390,6 @@ export function CreationModal({ isOpen, onClose, location }: CreationModalProps)
                 <LoadingOrb size="lg" className="my-8" />
             </motion.div>
         );
-
       case 6: // Final Review and Save
         return (
             <motion.div
