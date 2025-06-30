@@ -89,46 +89,6 @@ async function mintAlgorandNFT(souvenir, supabase) {
   }
 }
 
-// Function to normalize Supabase storage URLs
-function normalizeSupabaseUrl(url: string): string {
-  try {
-    // Parse the URL to work with its components
-    const urlObj = new URL(url);
-    
-    // Normalize the protocol and hostname to lowercase
-    const protocol = urlObj.protocol.toLowerCase();
-    const hostname = urlObj.hostname.toLowerCase();
-    
-    // Normalize the pathname
-    let pathname = urlObj.pathname;
-    
-    // Fix multiple consecutive slashes (but preserve the initial slash)
-    pathname = pathname.replace(/\/+/g, '/');
-    
-    // Convert to lowercase for consistent casing
-    pathname = pathname.toLowerCase();
-    
-    // Replace spaces and URL-encoded spaces with underscores in the entire path
-    pathname = pathname.replace(/\s+/g, '_').replace(/%20/g, '_');
-    
-    // Fix specific bucket name issues
-    pathname = pathname
-      .replace(/\/storage\/v1\/object\/public\/audio%20stories\//gi, '/storage/v1/object/public/audio_stories/')
-      .replace(/\/storage\/v1\/object\/public\/audio\s+stories\//gi, '/storage/v1/object/public/audio_stories/')
-      .replace(/\/storage\/v1\/object\/public\/souvenir%20images\//gi, '/storage/v1/object/public/souvenir_images/')
-      .replace(/\/storage\/v1\/object\/public\/souvenir\s+images\//gi, '/storage/v1/object/public/souvenir_images/');
-    
-    // Reconstruct the URL
-    const normalizedUrl = `${protocol}//${hostname}${pathname}${urlObj.search}${urlObj.hash}`;
-    
-    console.log(`URL normalization: ${url} -> ${normalizedUrl}`);
-    return normalizedUrl;
-  } catch (error) {
-    console.error('Error normalizing URL:', error);
-    return url; // Return original URL if normalization fails
-  }
-}
-
 // Main Deno serve function
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -156,24 +116,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Normalize URLs to ensure correct Supabase storage format
-    const normalizedAudioUrl = normalizeSupabaseUrl(audioUrl);
-    const normalizedImageUrl = normalizeSupabaseUrl(imageUrl);
-
-    const algorandTxId = await mintAlgorandNFT({ 
-      title, 
-      audioUrl: normalizedAudioUrl, 
-      imageUrl: normalizedImageUrl, 
-      transcript, 
-      latitude, 
-      longitude 
-    }, supabase);
+    const algorandTxId = await mintAlgorandNFT({ title, audioUrl, imageUrl, transcript, latitude, longitude }, supabase);
 
     const { data: souvenir, error: dbError } = await supabase.from('souvenirs').insert({
       user_id: user.id,
       title,
-      audio_url: normalizedAudioUrl,
-      image_url: normalizedImageUrl,
+      audio_url: audioUrl,
+      image_url: imageUrl,
       transcript_text: transcript,
       algorand_tx_id: algorandTxId,
       latitude,
