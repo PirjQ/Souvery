@@ -41,7 +41,7 @@ export function ImageUploader({ onImageUploaded, disabled, currentImage }: Image
       // Upload to Supabase storage
       const fileName = `souvenir_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${file.name.split('.').pop()}`;
       
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('souvenir_images')
         .upload(fileName, file, {
           cacheControl: '3600',
