@@ -246,9 +246,9 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
                       className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-10 h-10 p-0 flex-shrink-0"
                   >
                       {audioState.isPlaying && audioState.currentUrl === souvenir.audio_url ? (
-                          <Pause className="w-4 h-4" />
+                          <Pause className="w-4 h-4 pointer-events-none" />
                       ) : (
-                          <Play className="w-4 h-4" />
+                          <Play className="w-4 h-4 pointer-events-none" />
                       )}
                   </Button>
                   <div className="w-full">
