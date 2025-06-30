@@ -1,15 +1,22 @@
-import { useEffect, useRef, useState, useCallback  } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L, { Icon } from 'leaflet';
 import { Slider } from '@/components/ui/slider';
 import { Souvenir } from '@/lib/supabase';
-import { motion } from 'framer-motion';
 import { Play, Pause, MapPin, Navigation, CheckCircle } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button'; // <--- ADD THIS LINE
+import { Button } from '@/components/ui/button';
 import 'leaflet/dist/leaflet.css';
 
-// Custom marker icons (no changes here)
+// --- Fix for Leaflet's default icon path issues in Vite ---
+// This is done once when the module is loaded.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// --- Custom Marker Icons ---
 const userLocationIcon = new Icon({
   iconUrl: 'data:image/svg+xml;base64,' + btoa(`
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -52,28 +59,24 @@ const verifiedSouvenirIcon = new Icon({
   popupAnchor: [0, -28],
 });
 
+// --- Component Prop Types ---
 interface WorldMapProps {
   souvenirs: Souvenir[];
   onMapClick: (lat: number, lng: number) => void;
-  selectedLocation?: { lat: number; lng: number } | null;
-  souvenirToHighlight?: Souvenir | null;
-  onSouvenirHighlighted?: () => void;
+  selectedLocation: { lat: number; lng: number } | null;
+  souvenirToHighlight: Souvenir | null;
+  onSouvenirHighlighted: () => void;
 }
 
+// --- Child Components for Map Interaction ---
 function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
-    click: (e) => {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
+    click: (e) => onMapClick(e.latlng.lat, e.latlng.lng),
   });
   return null;
 }
 
-function MapController({ souvenirToHighlight, onSouvenirHighlighted, selectedLocation }: {
-  souvenirToHighlight: Souvenir | null;
-  onSouvenirHighlighted?: () => void;
-  selectedLocation: { lat: number; lng: number } | null;
-}) {
+function MapController({ souvenirToHighlight, onSouvenirHighlighted, selectedLocation }: Omit<WorldMapProps, 'souvenirs' | 'onMapClick'>) {
   const map = useMap();
 
   useEffect(() => {
@@ -83,11 +86,7 @@ function MapController({ souvenirToHighlight, onSouvenirHighlighted, selectedLoc
         12,
         { duration: 2, easeLinearity: 0.1 }
       );
-
-      const timeout = setTimeout(() => {
-        onSouvenirHighlighted?.();
-      }, 3000);
-
+      const timeout = setTimeout(() => onSouvenirHighlighted(), 3000);
       return () => clearTimeout(timeout);
     }
   }, [souvenirToHighlight, map, onSouvenirHighlighted]);
@@ -104,53 +103,37 @@ function MapController({ souvenirToHighlight, onSouvenirHighlighted, selectedLoc
   return null;
 }
 
+// --- Main WorldMap Component ---
 export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHighlight, onSouvenirHighlighted }: WorldMapProps) {
-  const mapRef = useRef<any>(null);
-  const [selectedSouvenir, setSelectedSouvenir] = useState<Souvenir | null>(null);
-
+  const mapRef = useRef<L.Map>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [audioState, setAudioState] = useState({
+    isPlaying: false,
+    currentUrl: null as string | null,
+    progress: 0,
+  });
 
-  // --- NEW: A ref to hold the popup container element ---
-  const popupRef = useRef<HTMLDivElement>(null);
-
-  // --- NEW: Use a useCallback to attach the Leaflet event stopper ---
   const popupContainerRef = useCallback((node: HTMLDivElement) => {
     if (node !== null) {
-      // This is the key: Use Leaflet's own utility to stop clicks
       L.DomEvent.disableClickPropagation(node);
     }
   }, []);
-  
-  const [audioState, setAudioState] = useState<{
-    isPlaying: boolean;
-    currentUrl: string | null;
-    progress: number;
-  }>({
-    isPlaying: false,
-    currentUrl: null,
-    progress: 0,
-  });
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
 
     const handleTimeUpdate = () => {
-      if (isSeeking) return;
-      
-      if (!audioElement.duration || !isFinite(audioElement.duration)) return;
+      if (isSeeking || !audioElement.duration || !isFinite(audioElement.duration)) return;
       setAudioState(prev => ({
         ...prev,
         progress: (audioElement.currentTime / audioElement.duration) * 100,
       }));
     };
-
     const handleEnded = () => {
       setAudioState({ isPlaying: false, currentUrl: audioState.currentUrl, progress: 100 });
-      setTimeout(() => {
-         setAudioState({ isPlaying: false, currentUrl: null, progress: 0 });
-      }, 300);
+      setTimeout(() => setAudioState({ isPlaying: false, currentUrl: null, progress: 0 }), 300);
     };
 
     audioElement.addEventListener('timeupdate', handleTimeUpdate);
@@ -162,17 +145,11 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
     };
   }, [audioState.currentUrl, isSeeking]);
 
-  // --- NEW: Handler for when the user drags the slider ---
   const handleSeek = (value: number[]) => {
-    if (!audioRef.current || !audioRef.current.duration) return;
-
+    if (!audioRef.current?.duration) return;
     const newProgress = value[0];
     const newTime = (newProgress / 100) * audioRef.current.duration;
-
-    // Update the audio's playback time
     audioRef.current.currentTime = newTime;
-
-    // Also update the state to move the slider thumb immediately
     setAudioState(prev => ({ ...prev, progress: newProgress }));
   };
 
@@ -194,19 +171,10 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
     }
   };
 
-  useEffect(() => {
-    delete (Icon.Default.prototype as any)._getIconUrl;
-    Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    });
-  }, []);
-
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        ref={mapRef}
+        whenCreated={map => mapRef.current = map}
         center={[20, 0]}
         zoom={2}
         className="w-full h-full"
@@ -216,7 +184,6 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
           url="https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
-
         <MapClickHandler onMapClick={onMapClick} />
         <MapController
           souvenirToHighlight={souvenirToHighlight}
@@ -236,117 +203,91 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
         )}
 
         {souvenirs.map((souvenir) => {
-  // --- This is the new logic to choose the correct icon ---
-  const isHighlighted = souvenirToHighlight?.id === souvenir.id;
-  
-  const iconToUse = isHighlighted
-    ? userLocationIcon          // Use cyan icon if it's the highlighted one
-    : souvenir.is_verified      
-    ? verifiedSouvenirIcon      // Use new magenta icon if it's verified
-    : souvenirIcon;             // Use standard yellow icon otherwise
+          const isHighlighted = souvenirToHighlight?.id === souvenir.id;
+          const iconToUse = isHighlighted
+            ? userLocationIcon
+            : souvenir.is_verified
+            ? verifiedSouvenirIcon
+            : souvenirIcon;
 
-  return (
-    <Marker
-      key={souvenir.id}
-      position={[souvenir.latitude, souvenir.longitude]}
-      icon={iconToUse} // Use the icon we just selected
-      eventHandlers={{
-        click: () => setSelectedSouvenir(souvenir),
-        popupclose: () => {
-          if (audioRef.current && audioState.currentUrl === souvenir.audio_url) {
-            audioRef.current.pause();
-            setAudioState({ isPlaying: false, currentUrl: null, progress: 0 });
-          }
-        },
-      }}
-    >
-      <Popup
-        className="custom-popup"
-        minWidth={300}
-        autoPan={true}
-        keepInView={true}
-      >
-        <div className="space-y-3 p-2" ref={popupContainerRef}>
-          <div className="flex items-center gap-2">
-            <img
-              src={souvenir.image_url}
-              alt={souvenir.title}
-              className="w-16 h-16 object-cover rounded-lg"
-            />
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-800">{souvenir.title}</h3>
-              <p className="text-xs text-gray-600">
-                {new Date(souvenir.created_at).toLocaleDateString()}
-              </p>
-              
-              {/* --- NEW: Add the "Verified" badge inside the popup --- */}
-              {souvenir.is_verified && (
-                <div className="flex items-center gap-1 text-xs text-fuchsia-600 font-semibold mt-1">
-                   <CheckCircle className="w-3 h-3" />
-                   Verified Location
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs text-gray-600">
-            <div className="flex items-center gap-1">
-              <Navigation className="w-3 h-3" />
-              <span>Lat: {Number(souvenir.latitude).toFixed(4)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Navigation className="w-3 h-3" />
-              <span>Lng: {Number(souvenir.longitude).toFixed(4)}</span>
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-700 line-clamp-3">
-            {souvenir.transcript_text}
-          </p>
-
-          <div className="flex items-center gap-3 w-full mt-2">
-            <Button
-              onClick={() => handlePlayToggle(souvenir.audio_url)}
-              size="icon"
-              className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-10 h-10 p-0 flex-shrink-0"
+          return (
+            <Marker
+              key={souvenir.id}
+              position={[souvenir.latitude, souvenir.longitude]}
+              icon={iconToUse}
+              eventHandlers={{
+                popupclose: () => {
+                  if (audioRef.current && audioState.currentUrl === souvenir.audio_url) {
+                    audioRef.current.pause();
+                    setAudioState({ isPlaying: false, currentUrl: null, progress: 0 });
+                  }
+                },
+              }}
             >
-              {audioState.isPlaying && audioState.currentUrl === souvenir.audio_url ? (
-                <Pause className="w-4 h-4 pointer-events-none" />
-              ) : (
-                <Play className="w-4 h-4 pointer-events-none" />
-              )}
-            </Button>
-            <div className="w-full">
-              <Slider
-                value={[audioState.currentUrl === souvenir.audio_url ? audioState.progress : 0]}
-                onValueChange={handleSeek}
-                onPointerDown={() => setIsSeeking(true)}
-                onPointerUp={() => setIsSeeking(false)}
-                max={100}
-                step={1}
-                className="w-full cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-      </Popup>
-    </Marker>
-  );
-})}
+              <Popup className="custom-popup" minWidth={300} autoPan={true} keepInView={true}>
+                <div className="space-y-3 p-2" ref={popupContainerRef}>
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={souvenir.image_url}
+                      alt={souvenir.title}
+                      className="w-16 h-16 object-cover rounded-lg"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800">{souvenir.title}</h3>
+                      <p className="text-xs text-gray-600">
+                        {new Date(souvenir.created_at).toLocaleDateString()}
+                      </p>
+                      {souvenir.is_verified && (
+                        <div className="flex items-center gap-1 text-xs text-fuchsia-600 font-semibold mt-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified Location
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Navigation className="w-3 h-3" />
+                      <span>Lat: {Number(souvenir.latitude).toFixed(4)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Navigation className="w-3 h-3" />
+                      <span>Lng: {Number(souvenir.longitude).toFixed(4)}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-700 line-clamp-3">
+                    {souvenir.transcript_text}
+                  </p>
+                  <div className="flex items-center gap-3 w-full mt-2">
+                    <Button
+                      onClick={() => handlePlayToggle(souvenir.audio_url)}
+                      size="icon"
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-10 h-10 p-0 flex-shrink-0"
+                    >
+                      {audioState.isPlaying && audioState.currentUrl === souvenir.audio_url ? (
+                        <Pause className="w-4 h-4 pointer-events-none" />
+                      ) : (
+                        <Play className="w-4 h-4 pointer-events-none" />
+                      )}
+                    </Button>
+                    <div className="w-full">
+                      <Slider
+                        value={[audioState.currentUrl === souvenir.audio_url ? audioState.progress : 0]}
+                        onValueChange={handleSeek}
+                        onPointerDown={() => setIsSeeking(true)}
+                        onPointerUp={() => setIsSeeking(false)}
+                        max={100}
+                        step={1}
+                        className="w-full cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="absolute top-4 inset-x-0 mx-auto w-fit z-[1000]"
-      >
-        <div className="bg-gray-900/90 backdrop-blur-sm border border-cyan-500/20 rounded-lg px-4 py-2">
-          <p className="text-cyan-400 text-sm font-medium">
-            Click anywhere on the map to place your memory
-          </p>
-        </div>
-      </motion.div>
     </div>
   );
 }
