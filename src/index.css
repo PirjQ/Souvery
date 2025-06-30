@@ -100,3 +100,11 @@ body {
   color: #22d3ee !important;
 }
 
+/* Custom rule to increase z-index of Leaflet popups */
+.leaflet-popup-pane {
+  z-index: 1001 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  z-index: 1001 !important;
+}
