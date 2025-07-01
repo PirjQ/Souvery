@@ -6,6 +6,7 @@ import { Souvenir } from '@/lib/supabase';
 import { Play, Pause, MapPin, Navigation, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import 'leaflet/dist/leaflet.css';
+import { motion } from 'framer-motion';
 
 // --- Fix for Leaflet's default icon path issues in Vite ---
 // This is done once when the module is loaded.
