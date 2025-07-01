@@ -288,6 +288,17 @@ export function WorldMap({ souvenirs, onMapClick, selectedLocation, souvenirToHi
           );
         })}
       </MapContainer>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute top-4 inset-x-0 mx-auto w-fit z-[1000] pointer-events-none"
+      >
+        <div className="bg-gray-900/90 backdrop-blur-sm border border-cyan-500/20 rounded-lg px-4 py-2">
+          <p className="text-cyan-400 text-sm font-medium">
+            Click anywhere on the map to place your memory
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 }
